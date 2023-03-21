@@ -1,3 +1,5 @@
+find();
+
 function find() {
   let href = window.location.href;
   for(let i = 0; i <= badsites.length; i++){
@@ -8,4 +10,7 @@ function find() {
   }
 }
 
-find();
+function flush() {
+  document.body.innerHTML = "";
+  
+}
