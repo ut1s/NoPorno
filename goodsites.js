@@ -1,0 +1,1 @@
+var goodsites = ["https://music.youtube.com", "https://open.spotify.com/", "https://toliver.hu"];
