@@ -1,5 +1,7 @@
+// Starts here
 find();
 
+// This finds the bad sites and then executes the script
 function find() {
   let href = window.location.href;
   for(let i = 0; i <= badsites.length; i++){
@@ -15,6 +17,8 @@ function find() {
   }
 }
 
+
+// This flushed the site's content and refills with a nice message
 function flush() {
   document.open();
   document.write("");
@@ -25,6 +29,7 @@ function flush() {
 
 // Wait script is from https://stackoverflow.com/a/33414145
 // Thank you Mic & Trisped, great stack overflow users!
+// This is a wait function
 function wait(ms){
   var start = new Date().getTime();
   var end = start;
@@ -33,6 +38,7 @@ function wait(ms){
  }
 }
 
+// This manages the redirects to a random site from list
 function redirect () {
   window.location.replace(goodsites[Math.floor(Math.random()*goodsites.length)]);
 }
