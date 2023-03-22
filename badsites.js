@@ -1,1 +1,1 @@
-var badsites = ["google.com", "facebook.com"]
+var badsites = ["arukereso.hu", "facebook.com"]

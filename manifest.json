@@ -8,8 +8,7 @@
 
   "content_scripts": [{
     "js": ["badsites.js", "bsite.js", "goodsites.js", "noporno.js"],
-    "matches": ["<all_urls>"],
-    "run_at": "document_start"
+    "matches": ["<all_urls>"]
   }],
   "action": {
     "default_popup": "popup.html"
