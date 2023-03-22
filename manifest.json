@@ -7,7 +7,7 @@
   "author": "ut1s | github.com/ut1s",
 
   "content_scripts": [{
-    "js": ["badsites.js", "goodsites.js", "noporno.js"],
+    "js": ["badsites.js", "bsite.js", "goodsites.js", "noporno.js"],
     "matches": ["<all_urls>"],
     "run_at": "document_start"
   }],
