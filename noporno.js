@@ -22,6 +22,9 @@ function flush() {
   document.close();
 }
 
+
+// Wait script is from https://stackoverflow.com/a/33414145
+// Thank you Mic & Trisped, great stack overflow users!
 function wait(ms){
   var start = new Date().getTime();
   var end = start;
