@@ -4,11 +4,25 @@ find();
 // This finds the bad sites and then executes the script
 function find() {
   let href = window.location.href;
-  if (href.includes("reddit.com"))
+  for(let i = 0; i <= reddithref.length; i++){
+    if (href.includes(reddithref[i])) {
+      for(let i = 0; i <= subreddits.length; i++){
+        if (href.includes(subreddits[i])) {
+          console.log("flush!");
+          flush();
+          console.log("flushed");
+          wait(1);
+          console.log("timed");
+          wait(3000);
+          redirect();
+        }
+      }
+    }
+  }
   for(let i = 0; i <= badsites.length; i++){
     if (href.includes(badsites[i])) {
       console.log("flush!");
-      flush();
+      flush(bsite);
       console.log("flushed");
       wait(1);
       console.log("timed");
@@ -20,10 +34,10 @@ function find() {
 
 
 // This flushed the site's content and refills with a nice message
-function flush() {
+function flush(what) {
   document.open();
   document.write("");
-  document.write(bsite);
+  document.write(what);
   document.close();
 }
 
