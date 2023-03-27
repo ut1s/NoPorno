@@ -4,6 +4,7 @@ find();
 // This finds the bad sites and then executes the script
 function find() {
   let href = window.location.href;
+  if (href.includes("reddit.com"))
   for(let i = 0; i <= badsites.length; i++){
     if (href.includes(badsites[i])) {
       console.log("flush!");
