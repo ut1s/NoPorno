@@ -1,1 +1,1 @@
-var reddithref = ["https://www.reddit.com/", "https://www.troddit.com/", "https://reddxxx.com/", "http://web.uforio.com/", "https://reddnight.com/"];
+var redddithref = ["https://www.reddit.com/", "https://www.troddit.com/", "https://reddxxx.com/", "http://web.uforio.com/", "https://reddnight.com/"];

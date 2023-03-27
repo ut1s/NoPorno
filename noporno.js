@@ -9,7 +9,7 @@ function find() {
       for(let i = 0; i <= subreddits.length; i++){
         if (href.includes(subreddits[i])) {
           console.log("flush!");
-          flush();
+          flush(bsite);
           console.log("flushed");
           wait(1);
           console.log("timed");
