@@ -10,6 +10,16 @@
     "js": ["badsites.js", "bsite.js", "goodsites.js", "reddits.js", "noporno.js"],
     "matches": ["<all_urls>"]
   }],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.css"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["popup.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "action": {
     "default_popup": "popup.html"
   },
