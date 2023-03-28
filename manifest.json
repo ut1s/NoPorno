@@ -23,6 +23,14 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "icons": {
+    "16": "creative/icon16.png",
+    "32": "creative/icon32.png",
+    "64": "creative/icon64.png",
+    "128": "creative/icon128.png",
+    "256": "creative/icon256.png",
+    "512": "creative/icon512.png"
+  },
   "permissions":[
     "tabs",
     "storage"
