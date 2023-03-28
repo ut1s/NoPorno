@@ -11,6 +11,8 @@ function find() {
           console.log("flush!");
           flush(rsite);
           console.log("flushed");
+          store();
+          console.log("stored");
           wait(1);
           console.log("timed");
           wait(3000);
@@ -24,6 +26,8 @@ function find() {
       console.log("flush!");
       flush(bsite);
       console.log("flushed");
+      store();
+      console.log("stored");
       wait(1);
       console.log("timed");
       wait(3000);
@@ -56,4 +60,15 @@ function wait(ms){
 // This manages the redirects to a random site from list
 function redirect () {
   window.location.replace(goodsites[Math.floor(Math.random()*goodsites.length)]);
+}
+
+// Adds +1 after a successful ban
+function store(){
+  chrome.storage.sync.get("count", function(result) {
+    let count = result.count || 0;
+    count++;
+    chrome.storage.sync.set({ "count": count }, function() {
+      console.log("Sites banned: " + count);
+    });
+  });
 }
