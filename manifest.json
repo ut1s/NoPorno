@@ -29,7 +29,7 @@
     "64": "creative/icon64.png",
     "128": "creative/icon128.png",
     "256": "creative/icon256.png",
-    "512": "creative/icon512.png"
+    "512": "creative/icon.png"
   },
   "permissions":[
     "tabs",
