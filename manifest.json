@@ -21,7 +21,8 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": "creative/icon32.png"
   },
   "icons": {
     "16": "creative/icon16.png",
