@@ -13,9 +13,8 @@ function find() {
           console.log("flushed");
           store();
           console.log("stored");
-          wait(1);
+          wait(4000);
           console.log("timed");
-          wait(3000);
           redirect();
         }
       }
@@ -28,9 +27,8 @@ function find() {
       console.log("flushed");
       store();
       console.log("stored");
-      wait(1);
+      wait(4000);
       console.log("timed");
-      wait(3000);
       redirect();
     }
   }
