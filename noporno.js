@@ -4,6 +4,7 @@ find();
 // This finds the bad sites and then executes the script
 function find() {
   let href = window.location.href;
+  let dname = window.location.hostname;
   for(let i = 0; i <= reddithref.length; i++){
     if (href.includes(reddithref[i])) {
       for(let i = 0; i <= subreddits.length; i++){
@@ -20,6 +21,18 @@ function find() {
       }
     }
   }
+  for(let i = 0; i <= baddwords.length; i++){
+    if (href.includes(baddwords[i])) {
+      console.log("flush!");
+      flush(bsite);
+      console.log("flushed");
+      store();
+      console.log("stored");
+      wait(4000);
+      console.log("timed");
+      redirect();
+    }
+  } 
   for(let i = 0; i <= badsites.length; i++){
     if (href.includes(badsites[i])) {
       console.log("flush!");
