@@ -32,7 +32,7 @@ function find() {
       console.log("timed");
       redirect();
     }
-  } 
+  }
   for(let i = 0; i <= badsites.length; i++){
     if (href.includes(badsites[i])) {
       console.log("flush!");
