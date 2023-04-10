@@ -22,7 +22,7 @@ function find() {
     }
   }
   for(let i = 0; i <= baddwords.length; i++){
-    if (href.includes(baddwords[i])) {
+    if (dname.includes(baddwords[i])) {
       console.log("flush!");
       flush(bsite);
       console.log("flushed");
