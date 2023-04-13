@@ -21,8 +21,8 @@ function find() {
       }
     }
   }
-  for(let i = 0; i <= baddwords.length; i++){
-    if (dname.includes(baddwords[i])) {
+  for(let i = 0; i <= badsites.length; i++){
+    if (href.includes(badsites[i])) {
       console.log("flush!");
       flush(bsite);
       console.log("flushed");
@@ -33,8 +33,8 @@ function find() {
       redirect();
     }
   }
-  for(let i = 0; i <= badsites.length; i++){
-    if (href.includes(badsites[i])) {
+  for(let i = 0; i <= baddwords.length; i++){
+    if (dname.includes(baddwords[i])) {
       console.log("flush!");
       flush(bsite);
       console.log("flushed");
