@@ -3,41 +3,33 @@
     return;
   }
 
-  const host = window.location.hostname.toLowerCase();
+  const host = window.location.hostname.toLowerCase().replace(/^www\./, "");
   if (!host) {
     return;
   }
 
-  const patternToDomain = (pattern) => {
-    if (typeof pattern !== "string") {
-      return "";
-    }
-
-    const match = pattern.toLowerCase().match(/^\*:\/\/\*\.([^/*?#]+)\/\*$/);
-    return match ? match[1] : "";
-  };
-
-  const hostMatches = (domain) => host === domain || host.endsWith(`.${domain}`);
-
-  chrome.storage.sync
-    .get({ blocklist: [] })
-    .then((result) => {
-      const blocklist = Array.isArray(result.blocklist) ? result.blocklist : [];
-      const isBlockedDomain = blocklist.some((pattern) => {
-        const domain = patternToDomain(pattern);
-        return domain ? hostMatches(domain) : false;
-      });
-
-      if (!isBlockedDomain) {
+  chrome.runtime.sendMessage(
+    {
+      type: "content:checkRedditUrl",
+      url: window.location.href
+    },
+    (response) => {
+      if (chrome.runtime.lastError || !response?.ok || !response.shouldBlock) {
         return;
       }
 
-      chrome.runtime.sendMessage({
-        type: "content:blockedDomainSeen",
-        domain: host
-      });
-    })
-    .catch(() => {
-      // The content script intentionally does not read page content.
-    });
+      const redirectUrl = new URL(chrome.runtime.getURL("redirect.html"));
+      redirectUrl.searchParams.set("blocked", host);
+      redirectUrl.searchParams.set("source", "reddit");
+
+      if (
+        typeof response.blockedSubreddit === "string" &&
+        response.blockedSubreddit.trim()
+      ) {
+        redirectUrl.searchParams.set("subreddit", response.blockedSubreddit.trim());
+      }
+
+      window.location.replace(redirectUrl.toString());
+    }
+  );
 })();

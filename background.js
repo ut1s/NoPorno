@@ -13,6 +13,12 @@ try {
   console.error("NoPorno: failed to load badsites.js", error);
 }
 
+try {
+  importScripts("reddits.js");
+} catch (error) {
+  console.error("NoPorno: failed to load reddits.js", error);
+}
+
 const STORAGE_LOCAL_KEYS = {
   redirectHistory: "redirectHistory",
   ruleLoadError: "ruleLoadError",
@@ -34,6 +40,8 @@ const FALLBACK_BLOCKLIST = [
 ];
 
 const BUILTIN_BLOCKLIST = buildDefaultBlocklistFromBadsites();
+const REDDIT_VIEWER_MATCHERS = buildRedditViewerMatchers();
+const REDDIT_BLOCKED_SUBREDDITS = buildBlockedSubredditSet();
 
 const DEFAULT_SYNC_SETTINGS = {
   enabled: true,
@@ -135,6 +143,9 @@ async function handleMessage(message) {
       await logRedirectEvent(message.payload || {});
       return {};
     }
+
+    case "content:checkRedditUrl":
+      return await evaluateRedditBlockRequest(message.url);
 
     case "content:blockedDomainSeen":
       return {};
@@ -311,6 +322,27 @@ async function rebuildDynamicRules() {
       [STORAGE_LOCAL_KEYS.ruleLoadErrorAt]: Date.now()
     });
   }
+}
+
+async function evaluateRedditBlockRequest(rawUrl) {
+  const sync = await chrome.storage.sync.get({
+    [STORAGE_SYNC_KEYS.enabled]: DEFAULT_SYNC_SETTINGS.enabled
+  });
+  const enabled = Boolean(sync[STORAGE_SYNC_KEYS.enabled]);
+
+  if (!enabled) {
+    return { shouldBlock: false };
+  }
+
+  const blockedSubreddit = findBlockedSubredditForViewerUrl(rawUrl);
+  if (!blockedSubreddit) {
+    return { shouldBlock: false };
+  }
+
+  return {
+    shouldBlock: true,
+    blockedSubreddit: `r/${blockedSubreddit}`
+  };
 }
 
 function buildDynamicRules(blocklist) {
@@ -578,6 +610,228 @@ function sanitizeDomainForLog(value) {
 
   domain = domain.split("/")[0].split(":")[0].replace(/^www\./, "");
   return isValidDomain(domain) ? domain : "";
+}
+
+function buildRedditViewerMatchers() {
+  const source = Array.isArray(globalThis.reddithref) ? globalThis.reddithref : [];
+  const uniqueMatchers = new Map();
+
+  for (const entry of source) {
+    const matcher = normalizeViewerMatcher(entry);
+    if (!matcher) {
+      continue;
+    }
+
+    uniqueMatchers.set(`${matcher.host}${matcher.pathPrefix}`, matcher);
+  }
+
+  return [...uniqueMatchers.values()];
+}
+
+function normalizeViewerMatcher(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  let candidate = trimmed;
+  candidate = candidate.replace(/^\*:\/\/\*\./, "https://");
+  candidate = candidate.replace(/^\*:\/\//, "https://");
+
+  if (!candidate.includes("://")) {
+    candidate = `https://${candidate}`;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (!isValidDomain(host)) {
+      return null;
+    }
+
+    return {
+      host,
+      pathPrefix: normalizePathPrefix(parsed.pathname)
+    };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function normalizePathPrefix(pathname) {
+  let value = typeof pathname === "string" && pathname ? pathname.toLowerCase() : "/";
+
+  if (!value.startsWith("/")) {
+    value = `/${value}`;
+  }
+
+  value = value.replace(/\/+/g, "/");
+
+  if (!value.endsWith("/")) {
+    value = `${value}/`;
+  }
+
+  return value;
+}
+
+function buildBlockedSubredditSet() {
+  const source = Array.isArray(globalThis.subreddits) ? globalThis.subreddits : [];
+  const blocked = new Set();
+
+  for (const item of source) {
+    const subreddit = normalizeSubredditName(item);
+    if (!subreddit) {
+      continue;
+    }
+
+    blocked.add(subreddit);
+  }
+
+  return blocked;
+}
+
+function normalizeSubredditName(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const lower = value.trim().toLowerCase();
+  if (!lower) {
+    return "";
+  }
+
+  const prefixedMatch = lower.match(/(?:^|\/)r\/([a-z0-9_]{2,64})/);
+  if (prefixedMatch) {
+    return prefixedMatch[1];
+  }
+
+  const directMatch = lower.match(/^([a-z0-9_]{2,64})$/);
+  return directMatch ? directMatch[1] : "";
+}
+
+function findBlockedSubredditForViewerUrl(rawUrl) {
+  if (typeof rawUrl !== "string" || REDDIT_VIEWER_MATCHERS.length === 0) {
+    return "";
+  }
+
+  if (!(REDDIT_BLOCKED_SUBREDDITS instanceof Set) || REDDIT_BLOCKED_SUBREDDITS.size === 0) {
+    return "";
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch (_error) {
+    return "";
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return "";
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+  const path = normalizeComparablePath(parsed.pathname);
+
+  const viewer = REDDIT_VIEWER_MATCHERS.find(
+    (matcher) => matcher.host === host && path.startsWith(matcher.pathPrefix)
+  );
+
+  if (!viewer) {
+    return "";
+  }
+
+  const relativePath = path.startsWith(viewer.pathPrefix)
+    ? path.slice(viewer.pathPrefix.length)
+    : path.slice(1);
+
+  const fromPath = findBlockedSubredditInPath(relativePath);
+  if (fromPath) {
+    return fromPath;
+  }
+
+  const fromSearch = findBlockedSubredditInSearch(parsed.searchParams);
+  if (fromSearch) {
+    return fromSearch;
+  }
+
+  return findBlockedSubredditInFragment(parsed.hash);
+}
+
+function normalizeComparablePath(pathname) {
+  let value = typeof pathname === "string" && pathname ? pathname.toLowerCase() : "/";
+
+  if (!value.startsWith("/")) {
+    value = `/${value}`;
+  }
+
+  return value.replace(/\/+/g, "/");
+}
+
+function findBlockedSubredditInPath(pathValue) {
+  if (typeof pathValue !== "string" || !pathValue) {
+    return "";
+  }
+
+  const normalized = pathValue.toLowerCase();
+  const explicitMatch = normalized.match(/(?:^|[/?#=&])r\/([a-z0-9_]{2,64})(?=$|[/?#=&])/);
+  if (explicitMatch && REDDIT_BLOCKED_SUBREDDITS.has(explicitMatch[1])) {
+    return explicitMatch[1];
+  }
+
+  const leadingMatch = normalized.match(/^\/?([a-z0-9_]{2,64})(?=$|[/?#=&])/);
+  if (leadingMatch && REDDIT_BLOCKED_SUBREDDITS.has(leadingMatch[1])) {
+    return leadingMatch[1];
+  }
+
+  return "";
+}
+
+function findBlockedSubredditInSearch(searchParams) {
+  if (!(searchParams instanceof URLSearchParams)) {
+    return "";
+  }
+
+  const subredditKeys = new Set(["sub", "subreddit", "r", "sr", "community"]);
+
+  for (const [key, value] of searchParams.entries()) {
+    if (!subredditKeys.has((key || "").trim().toLowerCase())) {
+      continue;
+    }
+
+    const candidate = normalizeSubredditName(value);
+    if (candidate && REDDIT_BLOCKED_SUBREDDITS.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return "";
+}
+
+function findBlockedSubredditInFragment(hashValue) {
+  if (typeof hashValue !== "string" || !hashValue) {
+    return "";
+  }
+
+  const fragment = hashValue.replace(/^#/, "").toLowerCase();
+  if (!fragment) {
+    return "";
+  }
+
+  const fromPath = findBlockedSubredditInPath(fragment);
+  if (fromPath) {
+    return fromPath;
+  }
+
+  const hashParams = new URLSearchParams(fragment.replace(/^!/, ""));
+  return findBlockedSubredditInSearch(hashParams);
 }
 
 function isValidDomain(value) {

@@ -16,19 +16,20 @@ let hasRedirected = false;
 let intervalId = null;
 
 const blockedDomain = getBlockedDomainFromQuery();
+const blockedSubreddit = getBlockedSubredditFromQuery();
 const destinationList = getSafeGoodsites();
 const targetUrl = pickRandom(destinationList);
 
-if (blockedDomain && blockedDomain !== "unknown") {
+if ((blockedDomain && blockedDomain !== "unknown") || blockedSubreddit) {
   blockedDomainEl.hidden = false;
-  blockedDomainEl.textContent = `Blocked domain: ${blockedDomain}`;
+  blockedDomainEl.textContent = buildBlockedContextText(blockedDomain, blockedSubreddit);
 }
 
 void chrome.runtime.sendMessage({
   type: "redirect:log",
   payload: {
     domain: blockedDomain,
-    category: "goodsites"
+    category: blockedSubreddit ? "reddit" : "goodsites"
   }
 });
 
@@ -111,6 +112,11 @@ function getBlockedDomainFromQuery() {
   return sanitizeDomain(blockedValue);
 }
 
+function getBlockedSubredditFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  return sanitizeSubreddit(params.get("subreddit") || "");
+}
+
 function sanitizeDomain(value) {
   if (!value) {
     return "unknown";
@@ -124,4 +130,39 @@ function sanitizeDomain(value) {
 
 function setStatus(message) {
   statusTextEl.textContent = message;
+}
+
+function sanitizeSubreddit(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return "";
+  }
+
+  const prefixed = trimmed.match(/^(?:\/)?r\/([a-z0-9_]{2,64})$/);
+  if (prefixed) {
+    return `r/${prefixed[1]}`;
+  }
+
+  const direct = trimmed.match(/^([a-z0-9_]{2,64})$/);
+  if (direct) {
+    return `r/${direct[1]}`;
+  }
+
+  return "";
+}
+
+function buildBlockedContextText(domain, subreddit) {
+  if (domain && domain !== "unknown" && subreddit) {
+    return `Blocked subreddit: ${subreddit} on ${domain}`;
+  }
+
+  if (subreddit) {
+    return `Blocked subreddit: ${subreddit}`;
+  }
+
+  return `Blocked domain: ${domain}`;
 }
