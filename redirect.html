@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoPorno Redirect</title>
+    <link rel="stylesheet" href="redirect.css" />
+    <script src="redirect.js" defer></script>
+  </head>
+  <body>
+    <main class="redirect-shell">
+      <header class="hero-card">
+        <p class="eyebrow">NoPorno</p>
+        <h1 id="encouraging-message">Good pause. Your future self thanks you.</h1>
+        <p class="subcopy">
+          You interrupted the loop. Keep that momentum and pick your next step.
+        </p>
+      </header>
+
+      <section class="breathing-card" aria-label="Breathing exercise">
+        <div class="breathing-circle" aria-hidden="true"></div>
+        <p id="breathing-phase" class="breathing-phase">Inhale</p>
+        <p class="breathing-hint">4s inhale • 4s hold • 4s exhale</p>
+      </section>
+
+      <section class="quote-card" aria-label="Motivational quote">
+        <p class="quote-label">Focus reminder</p>
+        <blockquote id="motivation-quote"></blockquote>
+      </section>
+
+      <section id="custom-destination" class="custom-card" hidden>
+        <div>
+          <p class="custom-label">Your custom destination is ready</p>
+          <a id="custom-link" class="custom-link" href="#">Open custom redirect</a>
+        </div>
+      </section>
+
+      <section class="cards-card" aria-label="Redirect destination cards">
+        <div class="cards-title-row">
+          <h2>Choose your next move</h2>
+          <p id="cards-note">3 grounding options picked for this moment</p>
+        </div>
+        <div id="card-grid" class="card-grid"></div>
+      </section>
+
+      <footer class="timer-card">
+        <p id="countdown-text" class="countdown">Redirecting in 10s</p>
+        <button id="cancel-timer-btn" class="secondary-btn" type="button">
+          Cancel Auto-Redirect
+        </button>
+      </footer>
+
+      <p id="status-message" class="status" aria-live="polite"></p>
+    </main>
+  </body>
+</html>
