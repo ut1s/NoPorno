@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoPorno Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+    <script src="settings.js" defer></script>
+  </head>
+  <body>
+    <main class="settings-shell">
+      <header class="hero-card">
+        <h1>NoPorno Settings</h1>
+        <p>
+          Calm, local-only controls. No accounts, no tracking, no analytics.
+        </p>
+      </header>
+
+      <section id="warning-card" class="card warning" hidden>
+        <h2>Rule warning</h2>
+        <p id="warning-text"></p>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>General</h2>
+
+          <label class="row-between">
+            <span>Enable protection</span>
+            <span class="switch lockable-wrapper">
+              <input id="enabled-toggle" class="lockable" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+
+          <label class="row-between">
+            <span>Strict mode</span>
+            <span class="switch lockable-wrapper">
+              <input id="strict-mode-toggle" class="lockable" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+
+          <div class="field-group">
+            <label for="custom-url-input">Custom redirect URL (optional)</label>
+            <input
+              id="custom-url-input"
+              class="lockable"
+              type="url"
+              placeholder="https://example.com"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field-group">
+            <p class="label">Redirect categories</p>
+            <label class="checkbox-label">
+              <input id="cat-mental" class="lockable" type="checkbox" /> Mental reset
+            </label>
+            <label class="checkbox-label">
+              <input id="cat-learn" class="lockable" type="checkbox" /> Learn something new
+            </label>
+            <label class="checkbox-label">
+              <input id="cat-active" class="lockable" type="checkbox" /> Do something active
+            </label>
+          </div>
+
+          <button id="save-settings-btn" class="primary-btn lockable" type="button">
+            Save settings
+          </button>
+          <p id="settings-status" class="status" aria-live="polite"></p>
+        </article>
+
+        <article class="card">
+          <h2>Blocklist editor</h2>
+
+          <div class="inline-row">
+            <input
+              id="add-domain-input"
+              class="lockable"
+              type="text"
+              placeholder="example.com"
+              autocomplete="off"
+            />
+            <button id="add-domain-btn" class="lockable" type="button">Add</button>
+          </div>
+
+          <ul id="blocklist-list" class="blocklist-list"></ul>
+
+          <input id="import-file-input" type="file" accept="application/json" hidden />
+
+          <div class="inline-row">
+            <button id="export-blocklist-btn" type="button">Export JSON</button>
+            <button id="import-blocklist-btn" class="lockable" type="button">Import JSON</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>History</h2>
+          <p id="history-count-text">Redirect log entries: 0</p>
+          <button id="clear-history-btn" class="danger-btn lockable" type="button">
+            Clear history
+          </button>
+        </article>
+
+        <article class="card">
+          <h2>Accountability</h2>
+          <p id="pin-status-text" class="muted"></p>
+
+          <div id="pin-create-panel" class="field-group">
+            <label for="pin-input">Set PIN</label>
+            <input id="pin-input" type="password" inputmode="numeric" autocomplete="new-password" />
+            <label for="pin-confirm-input">Confirm PIN</label>
+            <input
+              id="pin-confirm-input"
+              type="password"
+              inputmode="numeric"
+              autocomplete="new-password"
+            />
+            <button id="set-pin-btn" type="button">Set PIN</button>
+          </div>
+
+          <div id="pin-unlock-panel" class="field-group" hidden>
+            <label for="unlock-pin-input">Enter PIN to unlock changes</label>
+            <div class="inline-row">
+              <input
+                id="unlock-pin-input"
+                type="password"
+                inputmode="numeric"
+                autocomplete="current-password"
+              />
+              <button id="unlock-pin-btn" type="button">Unlock</button>
+            </div>
+          </div>
+
+          <div id="pin-manage-panel" class="field-group" hidden>
+            <label for="new-pin-input">New PIN</label>
+            <input id="new-pin-input" type="password" inputmode="numeric" autocomplete="new-password" />
+            <label for="new-pin-confirm-input">Confirm new PIN</label>
+            <input
+              id="new-pin-confirm-input"
+              type="password"
+              inputmode="numeric"
+              autocomplete="new-password"
+            />
+            <div class="inline-row">
+              <button id="update-pin-btn" type="button">Update PIN</button>
+              <button id="remove-pin-btn" class="danger-btn" type="button">Remove PIN</button>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
