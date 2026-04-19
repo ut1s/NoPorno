@@ -1,11 +1,18 @@
 const STORAGE_SYNC_KEYS = {
   enabled: "enabled",
   blocklist: "blocklist",
+  blocklistSeedVersion: "blocklistSeedVersion",
   categoryToggles: "categoryToggles",
   strictMode: "strictMode",
   customRedirectUrl: "customRedirectUrl",
   settingsPinHash: "settingsPinHash"
 };
+
+try {
+  importScripts("badsites.js");
+} catch (error) {
+  console.error("NoPorno: failed to load badsites.js", error);
+}
 
 const STORAGE_LOCAL_KEYS = {
   redirectHistory: "redirectHistory",
@@ -17,68 +24,32 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_ENTRIES = 100;
 const DNR_RULE_ID_START = 1000;
 const DNR_MAX_RULES = 5000;
+const BLOCKLIST_SEED_VERSION = 2;
 
-const DEFAULT_BLOCKLIST = [
+const MIGRATION_MARKERS_FROM_OLD_DEFAULT = [
   "*://*.pornhub.com/*",
   "*://*.xvideos.com/*",
   "*://*.xnxx.com/*",
   "*://*.xhamster.com/*",
   "*://*.redtube.com/*",
-  "*://*.youporn.com/*",
-  "*://*.tube8.com/*",
-  "*://*.spankbang.com/*",
-  "*://*.beeg.com/*",
-  "*://*.brazzers.com/*",
-  "*://*.chaturbate.com/*",
-  "*://*.livejasmin.com/*",
-  "*://*.stripchat.com/*",
-  "*://*.camsoda.com/*",
-  "*://*.myfreecams.com/*",
-  "*://*.cam4.com/*",
-  "*://*.txxx.com/*",
-  "*://*.porn.com/*",
-  "*://*.drtuber.com/*",
-  "*://*.nhentai.net/*",
-  "*://*.rule34.xxx/*",
-  "*://*.fapello.com/*",
-  "*://*.faphouse.com/*",
-  "*://*.motherless.com/*",
-  "*://*.eporner.com/*",
-  "*://*.hqporner.com/*",
-  "*://*.pornone.com/*",
-  "*://*.thumbzilla.com/*",
-  "*://*.nuvid.com/*",
-  "*://*.tnaflix.com/*",
-  "*://*.porndig.com/*",
-  "*://*.sunporno.com/*",
-  "*://*.slutload.com/*",
-  "*://*.spankwire.com/*",
-  "*://*.pornerbros.com/*",
-  "*://*.sex.com/*",
-  "*://*.mofos.com/*",
-  "*://*.realitykings.com/*",
-  "*://*.bangbros.com/*",
-  "*://*.evilangel.com/*",
-  "*://*.dogfartnetwork.com/*",
-  "*://*.hclips.com/*",
-  "*://*.3movs.com/*",
-  "*://*.gotporn.com/*",
-  "*://*.keezmovies.com/*",
-  "*://*.pornhd.com/*",
-  "*://*.fux.com/*",
-  "*://*.porntrex.com/*",
-  "*://*.hentaifox.com/*",
-  "*://*.xnalgas.com/*",
-  "*://*.jav.guru/*",
-  "*://*.javhd.com/*",
-  "*://*.xgroovy.com/*",
-  "*://*.xxxbunker.com/*",
-  "*://*.hdtube.xxx/*"
+  "*://*.youporn.com/*"
 ];
+
+const FALLBACK_BLOCKLIST = [
+  "*://*.pornhub.com/*",
+  "*://*.xvideos.com/*",
+  "*://*.xnxx.com/*",
+  "*://*.xhamster.com/*",
+  "*://*.redtube.com/*",
+  "*://*.youporn.com/*"
+];
+
+const DEFAULT_BLOCKLIST = buildDefaultBlocklistFromBadsites();
 
 const DEFAULT_SYNC_SETTINGS = {
   enabled: true,
   blocklist: DEFAULT_BLOCKLIST,
+  blocklistSeedVersion: BLOCKLIST_SEED_VERSION,
   categoryToggles: {
     mentalReset: true,
     learn: true,
@@ -136,6 +107,21 @@ async function ensureSyncDefaults() {
     if (existing[key] === undefined) {
       updates[key] = DEFAULT_SYNC_SETTINGS[key];
     }
+  }
+
+  const existingBlocklist = Array.isArray(existing[STORAGE_SYNC_KEYS.blocklist])
+    ? existing[STORAGE_SYNC_KEYS.blocklist]
+    : [];
+  const existingSeedVersion = Number(existing[STORAGE_SYNC_KEYS.blocklistSeedVersion]);
+
+  const shouldMigrate =
+    !Number.isFinite(existingSeedVersion) ||
+    (existingSeedVersion < BLOCKLIST_SEED_VERSION &&
+      isOldDefaultSignature(existingBlocklist));
+
+  if (shouldMigrate && isOldDefaultSignature(existingBlocklist)) {
+    updates[STORAGE_SYNC_KEYS.blocklist] = DEFAULT_BLOCKLIST;
+    updates[STORAGE_SYNC_KEYS.blocklistSeedVersion] = BLOCKLIST_SEED_VERSION;
   }
 
   if (Object.keys(updates).length > 0) {
@@ -472,6 +458,33 @@ function sanitizeBlocklist(blocklist) {
 
 function dedupe(list) {
   return [...new Set(list)];
+}
+
+function buildDefaultBlocklistFromBadsites() {
+  const source = Array.isArray(globalThis.badsites) ? globalThis.badsites : [];
+  const patterns = source
+    .map((entry) => normalizePattern(entry))
+    .filter((entry) => typeof entry === "string" && entry.length > 0);
+
+  if (patterns.length === 0) {
+    return [...FALLBACK_BLOCKLIST];
+  }
+
+  return dedupe(patterns);
+}
+
+function isOldDefaultSignature(blocklist) {
+  if (!Array.isArray(blocklist) || blocklist.length === 0) {
+    return true;
+  }
+
+  if (blocklist.length > 120) {
+    return false;
+  }
+
+  return MIGRATION_MARKERS_FROM_OLD_DEFAULT.every((marker) =>
+    blocklist.includes(marker)
+  );
 }
 
 function normalizePattern(input) {
