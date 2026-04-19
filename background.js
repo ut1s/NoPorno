@@ -1,7 +1,6 @@
 const STORAGE_SYNC_KEYS = {
   enabled: "enabled",
   blocklist: "blocklist",
-  blocklistSeedVersion: "blocklistSeedVersion",
   categoryToggles: "categoryToggles",
   strictMode: "strictMode",
   customRedirectUrl: "customRedirectUrl",
@@ -24,16 +23,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_ENTRIES = 100;
 const DNR_RULE_ID_START = 1000;
 const DNR_MAX_RULES = 5000;
-const BLOCKLIST_SEED_VERSION = 2;
-
-const MIGRATION_MARKERS_FROM_OLD_DEFAULT = [
-  "*://*.pornhub.com/*",
-  "*://*.xvideos.com/*",
-  "*://*.xnxx.com/*",
-  "*://*.xhamster.com/*",
-  "*://*.redtube.com/*",
-  "*://*.youporn.com/*"
-];
 
 const FALLBACK_BLOCKLIST = [
   "*://*.pornhub.com/*",
@@ -44,12 +33,12 @@ const FALLBACK_BLOCKLIST = [
   "*://*.youporn.com/*"
 ];
 
-const DEFAULT_BLOCKLIST = buildDefaultBlocklistFromBadsites();
+const BUILTIN_BLOCKLIST = buildDefaultBlocklistFromBadsites();
 
 const DEFAULT_SYNC_SETTINGS = {
   enabled: true,
-  blocklist: DEFAULT_BLOCKLIST,
-  blocklistSeedVersion: BLOCKLIST_SEED_VERSION,
+  // Keep only user-managed entries in sync storage to avoid quota overflows.
+  blocklist: [],
   categoryToggles: {
     mentalReset: true,
     learn: true,
@@ -107,21 +96,6 @@ async function ensureSyncDefaults() {
     if (existing[key] === undefined) {
       updates[key] = DEFAULT_SYNC_SETTINGS[key];
     }
-  }
-
-  const existingBlocklist = Array.isArray(existing[STORAGE_SYNC_KEYS.blocklist])
-    ? existing[STORAGE_SYNC_KEYS.blocklist]
-    : [];
-  const existingSeedVersion = Number(existing[STORAGE_SYNC_KEYS.blocklistSeedVersion]);
-
-  const shouldMigrate =
-    !Number.isFinite(existingSeedVersion) ||
-    (existingSeedVersion < BLOCKLIST_SEED_VERSION &&
-      isOldDefaultSignature(existingBlocklist));
-
-  if (shouldMigrate && isOldDefaultSignature(existingBlocklist)) {
-    updates[STORAGE_SYNC_KEYS.blocklist] = DEFAULT_BLOCKLIST;
-    updates[STORAGE_SYNC_KEYS.blocklistSeedVersion] = BLOCKLIST_SEED_VERSION;
   }
 
   if (Object.keys(updates).length > 0) {
@@ -186,12 +160,12 @@ async function buildPopupState() {
     : [];
 
   const stats = calculateStats(history);
+  const customBlocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
+  const effectiveBlocklist = getEffectiveBlocklist(customBlocklist);
 
   return {
     enabled: Boolean(sync[STORAGE_SYNC_KEYS.enabled]),
-    blocklistSize: Array.isArray(sync[STORAGE_SYNC_KEYS.blocklist])
-      ? sync[STORAGE_SYNC_KEYS.blocklist].length
-      : 0,
+    blocklistSize: effectiveBlocklist.length,
     todayCount: stats.today,
     weekCount: stats.week,
     ruleLoadError: local[STORAGE_LOCAL_KEYS.ruleLoadError] || "",
@@ -316,7 +290,8 @@ async function rebuildDynamicRules() {
   ]);
 
   const enabled = Boolean(sync[STORAGE_SYNC_KEYS.enabled]);
-  const blocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
+  const customBlocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
+  const blocklist = getEffectiveBlocklist(customBlocklist);
   const dynamicRules = await chrome.declarativeNetRequest.getDynamicRules();
 
   const removeRuleIds = dynamicRules.map((rule) => rule.id);
@@ -437,7 +412,7 @@ async function updateBadge(explicitEnabled) {
 
 function sanitizeBlocklist(blocklist) {
   if (!Array.isArray(blocklist)) {
-    return [...DEFAULT_BLOCKLIST];
+    return [];
   }
 
   const normalized = [];
@@ -473,18 +448,8 @@ function buildDefaultBlocklistFromBadsites() {
   return dedupe(patterns);
 }
 
-function isOldDefaultSignature(blocklist) {
-  if (!Array.isArray(blocklist) || blocklist.length === 0) {
-    return true;
-  }
-
-  if (blocklist.length > 120) {
-    return false;
-  }
-
-  return MIGRATION_MARKERS_FROM_OLD_DEFAULT.every((marker) =>
-    blocklist.includes(marker)
-  );
+function getEffectiveBlocklist(customBlocklist) {
+  return dedupe([...(Array.isArray(BUILTIN_BLOCKLIST) ? BUILTIN_BLOCKLIST : []), ...customBlocklist]);
 }
 
 function normalizePattern(input) {
