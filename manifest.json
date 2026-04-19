@@ -1,39 +1,39 @@
 {
   "manifest_version": 3,
-
-  "name": "NoPorno!",
-  "version": "0.6",
-  "description": "Meant to block all xxx sites whiches make your soul hell.",
-  "author": "ut1s | github.com/ut1s",
-
-  "content_scripts": [{
-    "js": ["badsites.js", "bsite.js", "goodsites.js", "reddits.js", "noporno.js"],
-    "matches": ["<all_urls>"]
-  }],
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.css"],
-      "matches": ["<all_urls>"]
-    },
-    {
-      "resources": ["popup.js"],
-      "matches": ["<all_urls>"]
-    }
+  "name": "NoPorno",
+  "version": "2.0.0",
+  "description": "Calm, supportive adult-site blocker with redirection and habit-safe alternatives.",
+  "permissions": [
+    "declarativeNetRequest",
+    "storage",
+    "tabs",
+    "activeTab"
   ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "creative/icon32.png"
+    "default_title": "NoPorno"
   },
+  "options_page": "settings.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
   "icons": {
     "16": "creative/icon16.png",
-    "32": "creative/icon32.png",
-    "64": "creative/icon64.png",
-    "128": "creative/icon128.png",
-    "256": "creative/icon256.png",
-    "512": "creative/icon.png"
-  },
-  "permissions":[
-    "tabs",
-    "storage"
-  ]
+    "48": "creative/icon48.png",
+    "128": "creative/icon128.png"
+  }
 }
