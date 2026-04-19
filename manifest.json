@@ -3,6 +3,7 @@
   "name": "NoPorno",
   "version": "2.0.0",
   "description": "Calm, supportive adult-site blocker with redirection and habit-safe alternatives.",
+  "incognito": "split",
   "permissions": [
     "declarativeNetRequest",
     "storage",
