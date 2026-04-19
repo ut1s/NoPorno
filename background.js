@@ -22,7 +22,7 @@ const STORAGE_LOCAL_KEYS = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_ENTRIES = 100;
 const DNR_RULE_ID_START = 1000;
-const DNR_MAX_RULES = 5000;
+const DNR_FALLBACK_MAX_RULES = 5000;
 
 const FALLBACK_BLOCKLIST = [
   "*://*.pornhub.com/*",
@@ -314,13 +314,18 @@ async function rebuildDynamicRules() {
 }
 
 function buildDynamicRules(blocklist) {
-  const safeList = blocklist.slice(0, DNR_MAX_RULES);
+  const maxRuleCount = getMaxDynamicRuleCount();
+  const safeList = blocklist.slice(0, maxRuleCount);
+  const rules = [];
 
-  return safeList.map((pattern, index) => {
-    const domain = patternToDomain(pattern) || "unknown-domain";
+  for (const pattern of safeList) {
+    const domain = patternToDomain(pattern);
+    if (!domain) {
+      continue;
+    }
 
-    return {
-      id: DNR_RULE_ID_START + index,
+    rules.push({
+      id: DNR_RULE_ID_START + rules.length,
       priority: 1,
       action: {
         type: "redirect",
@@ -329,11 +334,32 @@ function buildDynamicRules(blocklist) {
         }
       },
       condition: {
-        urlFilter: pattern,
+        // DNR urlFilter syntax uses adblock-style rules. This form matches
+        // both apex domains and subdomains (e.g. example.com + www.example.com).
+        urlFilter: buildDomainUrlFilter(domain),
         resourceTypes: ["main_frame"]
       }
-    };
-  });
+    });
+  }
+
+  return rules;
+}
+
+function getMaxDynamicRuleCount() {
+  const fromApi = Number(
+    chrome.declarativeNetRequest.MAX_NUMBER_OF_DYNAMIC_RULES ||
+      chrome.declarativeNetRequest.MAX_NUMBER_OF_DYNAMIC_AND_SESSION_RULES
+  );
+
+  if (Number.isFinite(fromApi) && fromApi > 0) {
+    return Math.floor(fromApi);
+  }
+
+  return DNR_FALLBACK_MAX_RULES;
+}
+
+function buildDomainUrlFilter(domain) {
+  return `||${domain}^`;
 }
 
 async function logRedirectEvent(payload) {
