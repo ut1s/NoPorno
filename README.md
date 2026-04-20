@@ -22,3 +22,15 @@ One day I just saw [mrvivacious's PorNo - Porn Blocker](https://github.com/mrviv
 Especially I don't have any porn addiction or anything; maybe I had but I fought it but this is not the matter why I started this project. The matter is maybe that I wanted to have a little bigger project even if it's just a browser extension but it makes our world somehow happier and I hope maybe fewer porn addicted people will live on the Earth.
 
 Okay this was the nice and fairytale part - I just wanted an useful project with I can make myself coller in my class; and maybe to make a little sociology research with how many block can it count.
+
+## Mozilla Add-ons upload
+
+To avoid AMO warnings for Chromium-only manifest keys (for example `background.service_worker`), build and upload the Firefox package:
+
+```bash
+bash scripts/build-firefox-zip.sh
+```
+
+Then upload:
+
+`dist/NoPorno-firefox.zip`
