@@ -1,3 +1,6 @@
+const extensionApi =
+  typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome;
+
 const REDIRECT_DELAY_SECONDS = 3;
 
 const fallbackGoodsites = [
@@ -25,7 +28,7 @@ if ((blockedDomain && blockedDomain !== "unknown") || blockedSubreddit) {
   blockedDomainEl.textContent = buildBlockedContextText(blockedDomain, blockedSubreddit);
 }
 
-void chrome.runtime.sendMessage({
+void extensionApi.runtime.sendMessage({
   type: "redirect:log",
   payload: {
     domain: blockedDomain,

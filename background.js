@@ -1,3 +1,7 @@
+(() => {
+const chrome =
+  typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome;
+
 const STORAGE_SYNC_KEYS = {
   enabled: "enabled",
   blocklist: "blocklist",
@@ -7,16 +11,26 @@ const STORAGE_SYNC_KEYS = {
   settingsPinHash: "settingsPinHash"
 };
 
-try {
-  importScripts("badsites.js");
-} catch (error) {
-  console.error("NoPorno: failed to load badsites.js", error);
-}
+loadLegacyListScripts();
 
-try {
-  importScripts("reddits.js");
-} catch (error) {
-  console.error("NoPorno: failed to load reddits.js", error);
+function loadLegacyListScripts() {
+  // In service worker context we load list files via importScripts.
+  // In document-based background scripts (Firefox), these are provided by manifest background.scripts.
+  if (typeof importScripts !== "function") {
+    return;
+  }
+
+  try {
+    importScripts("badsites.js");
+  } catch (error) {
+    console.error("NoPorno: failed to load badsites.js", error);
+  }
+
+  try {
+    importScripts("reddits.js");
+  } catch (error) {
+    console.error("NoPorno: failed to load reddits.js", error);
+  }
 }
 
 const STORAGE_LOCAL_KEYS = {
@@ -839,3 +853,5 @@ function isValidDomain(value) {
     value
   );
 }
+
+})();

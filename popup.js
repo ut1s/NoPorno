@@ -1,3 +1,6 @@
+const extensionApi =
+  typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome;
+
 const enabledToggle = document.getElementById("enabled-toggle");
 const toggleCaption = document.getElementById("toggle-caption");
 const statsText = document.getElementById("stats-text");
@@ -25,7 +28,7 @@ async function init() {
   });
 
   openSettingsBtn.addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
+    extensionApi.runtime.openOptionsPage();
   });
 
   await refreshState();
@@ -102,7 +105,7 @@ function setQuickStatus(text, isError = false) {
 }
 
 async function sendMessage(message) {
-  const response = await chrome.runtime.sendMessage(message);
+  const response = await extensionApi.runtime.sendMessage(message);
   if (!response || response.ok !== true) {
     throw new Error(response?.error || "Unexpected extension response.");
   }

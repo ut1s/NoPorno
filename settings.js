@@ -1,3 +1,6 @@
+const extensionApi =
+  typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome;
+
 const state = {
   enabled: true,
   blocklist: [],
@@ -510,7 +513,7 @@ function setStatus(message, isError = false) {
 }
 
 async function sendMessage(message) {
-  const response = await chrome.runtime.sendMessage(message);
+  const response = await extensionApi.runtime.sendMessage(message);
   if (!response || response.ok !== true) {
     throw new Error(response?.error || "Unexpected extension response.");
   }

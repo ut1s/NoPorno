@@ -3,17 +3,20 @@
   "name": "NoPorno",
   "version": "2.0.0",
   "description": "Calm, supportive adult-site blocker with redirection and habit-safe alternatives.",
-  "incognito": "split",
+  "incognito": "spanning",
   "permissions": [
     "declarativeNetRequest",
-    "storage",
-    "tabs",
-    "activeTab"
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
+    "scripts": [
+      "badsites.js",
+      "reddits.js",
+      "background.js"
+    ],
     "service_worker": "background.js"
   },
   "action": {
@@ -32,6 +35,30 @@
       "run_at": "document_start"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "redirect.html",
+        "redirect.css",
+        "redirect.js",
+        "goodsites.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "noporno@oliv.dev",
+      "strict_min_version": "121.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
   "icons": {
     "16": "creative/icon16.png",
     "48": "creative/icon48.png",
