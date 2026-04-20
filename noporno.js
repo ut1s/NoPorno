@@ -50,10 +50,16 @@ function find() {
 
 // This flushed the site's content and refills with a nice message
 function flush(what) {
-  document.open();
-  document.write("");
-  document.write(what);
-  document.close();
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(
+    typeof what === "string" ? what : "",
+    "text/html"
+  );
+
+  document.documentElement.replaceChildren(
+    parsed.head.cloneNode(true),
+    parsed.body.cloneNode(true)
+  );
 }
 
 
