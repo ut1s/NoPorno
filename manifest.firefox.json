@@ -16,8 +16,7 @@
       "badsites.js",
       "reddits.js",
       "background.js"
-    ],
-    "service_worker": "background.js"
+    ]
   },
   "action": {
     "default_popup": "popup.html",

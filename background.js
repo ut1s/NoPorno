@@ -392,10 +392,16 @@ function buildDynamicRules(blocklist) {
 }
 
 function getMaxDynamicRuleCount() {
-  const fromApi = Number(
-    chrome.declarativeNetRequest.MAX_NUMBER_OF_DYNAMIC_RULES ||
-      chrome.declarativeNetRequest.MAX_NUMBER_OF_DYNAMIC_AND_SESSION_RULES
+  const dnr = chrome.declarativeNetRequest || {};
+  const dynamicRulesLimit = Number(dnr["MAX_NUMBER_OF_DYNAMIC_RULES"]);
+  const dynamicAndSessionLimit = Number(
+    dnr.MAX_NUMBER_OF_DYNAMIC_AND_SESSION_RULES
   );
+
+  const fromApi =
+    Number.isFinite(dynamicRulesLimit) && dynamicRulesLimit > 0
+      ? dynamicRulesLimit
+      : dynamicAndSessionLimit;
 
   if (Number.isFinite(fromApi) && fromApi > 0) {
     return Math.floor(fromApi);
