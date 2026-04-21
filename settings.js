@@ -13,6 +13,7 @@ const state = {
   customRedirectUrl: "",
   settingsPinHash: "",
   historyCount: 0,
+  incognitoAccessAllowed: true,
   ruleLoadError: ""
 };
 
@@ -147,6 +148,8 @@ function syncStateFromResponse(response) {
   state.settingsPinHash =
     typeof response.settingsPinHash === "string" ? response.settingsPinHash : "";
   state.historyCount = Number(response.historyCount || 0);
+  state.incognitoAccessAllowed =
+    response.incognitoAccessAllowed !== false;
   state.ruleLoadError = typeof response.ruleLoadError === "string" ? response.ruleLoadError : "";
 }
 
@@ -159,9 +162,21 @@ function renderAll() {
   els.catActive.checked = state.categoryToggles.active;
   els.historyCountText.textContent = `Redirect log entries: ${state.historyCount}`;
 
+  const warnings = [];
+
+  if (!state.incognitoAccessAllowed) {
+    warnings.push(
+      "Private browsing access is disabled. Enable 'Run in Private Windows' (Firefox) or 'Allow in Incognito' (Chromium) in extension settings."
+    );
+  }
+
   if (state.ruleLoadError) {
+    warnings.push(`Rules failed to load: ${state.ruleLoadError}`);
+  }
+
+  if (warnings.length > 0) {
     els.warningCard.hidden = false;
-    els.warningText.textContent = `Rules failed to load: ${state.ruleLoadError}`;
+    els.warningText.textContent = warnings.join(" ");
   } else {
     els.warningCard.hidden = true;
     els.warningText.textContent = "";

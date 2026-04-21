@@ -81,9 +81,21 @@ async function refreshState() {
   toggleCaption.textContent = state.enabled ? "Enabled" : "Disabled";
   statsText.textContent = `Redirected ${state.todayCount} times today / ${state.weekCount} times this week`;
 
+  const warnings = [];
+
+  if (!state.incognitoAccessAllowed) {
+    warnings.push(
+      "Private browsing access is disabled. Enable 'Run in Private Windows' (Firefox) or 'Allow in Incognito' (Chromium) in extension settings."
+    );
+  }
+
   if (state.ruleLoadError) {
+    warnings.push(`Rules failed to load: ${state.ruleLoadError}`);
+  }
+
+  if (warnings.length > 0) {
     warningCard.hidden = false;
-    warningText.textContent = `Rules failed to load: ${state.ruleLoadError}`;
+    warningText.textContent = warnings.join(" ");
   } else {
     warningCard.hidden = true;
     warningText.textContent = "";

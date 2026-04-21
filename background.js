@@ -187,12 +187,14 @@ async function buildPopupState() {
   const stats = calculateStats(history);
   const customBlocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
   const effectiveBlocklist = getEffectiveBlocklist(customBlocklist);
+  const incognitoAccessAllowed = await getIncognitoAccessAllowed();
 
   return {
     enabled: Boolean(sync[STORAGE_SYNC_KEYS.enabled]),
     blocklistSize: effectiveBlocklist.length,
     todayCount: stats.today,
     weekCount: stats.week,
+    incognitoAccessAllowed,
     ruleLoadError: local[STORAGE_LOCAL_KEYS.ruleLoadError] || "",
     ruleLoadErrorAt: local[STORAGE_LOCAL_KEYS.ruleLoadErrorAt] || 0
   };
@@ -216,6 +218,7 @@ async function buildSettingsState() {
   const history = Array.isArray(local[STORAGE_LOCAL_KEYS.redirectHistory])
     ? local[STORAGE_LOCAL_KEYS.redirectHistory]
     : [];
+  const incognitoAccessAllowed = await getIncognitoAccessAllowed();
 
   return {
     enabled: Boolean(sync[STORAGE_SYNC_KEYS.enabled]),
@@ -228,9 +231,42 @@ async function buildSettingsState() {
         ? sync[STORAGE_SYNC_KEYS.settingsPinHash]
         : "",
     historyCount: history.length,
+    incognitoAccessAllowed,
     ruleLoadError: local[STORAGE_LOCAL_KEYS.ruleLoadError] || "",
     ruleLoadErrorAt: local[STORAGE_LOCAL_KEYS.ruleLoadErrorAt] || 0
   };
+}
+
+async function getIncognitoAccessAllowed() {
+  if (
+    !chrome.extension ||
+    typeof chrome.extension.isAllowedIncognitoAccess !== "function"
+  ) {
+    return true;
+  }
+
+  try {
+    const direct = chrome.extension.isAllowedIncognitoAccess();
+    if (typeof direct === "boolean") {
+      return direct;
+    }
+
+    if (direct && typeof direct.then === "function") {
+      return Boolean(await direct);
+    }
+  } catch (_error) {
+    // Ignore and fallback to callback-based query below.
+  }
+
+  return await new Promise((resolve) => {
+    try {
+      chrome.extension.isAllowedIncognitoAccess((allowed) => {
+        resolve(Boolean(allowed));
+      });
+    } catch (_error) {
+      resolve(true);
+    }
+  });
 }
 
 async function setEnabled(enabled) {
