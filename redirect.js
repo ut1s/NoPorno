@@ -20,19 +20,24 @@ let intervalId = null;
 
 const blockedDomain = getBlockedDomainFromQuery();
 const blockedSubreddit = getBlockedSubredditFromQuery();
+const blockedKeyword = getBlockedKeywordFromQuery();
 const destinationList = getSafeGoodsites();
 const targetUrl = pickRandom(destinationList);
 
-if ((blockedDomain && blockedDomain !== "unknown") || blockedSubreddit) {
+if ((blockedDomain && blockedDomain !== "unknown") || blockedSubreddit || blockedKeyword) {
   blockedDomainEl.hidden = false;
-  blockedDomainEl.textContent = buildBlockedContextText(blockedDomain, blockedSubreddit);
+  blockedDomainEl.textContent = buildBlockedContextText(
+    blockedDomain,
+    blockedSubreddit,
+    blockedKeyword
+  );
 }
 
 void extensionApi.runtime.sendMessage({
   type: "redirect:log",
   payload: {
     domain: blockedDomain,
-    category: blockedSubreddit ? "reddit" : "goodsites"
+    category: blockedSubreddit ? "reddit" : blockedKeyword ? "deviantart" : "goodsites"
   }
 });
 
@@ -120,6 +125,11 @@ function getBlockedSubredditFromQuery() {
   return sanitizeSubreddit(params.get("subreddit") || "");
 }
 
+function getBlockedKeywordFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  return sanitizeKeyword(params.get("keyword") || "");
+}
+
 function sanitizeDomain(value) {
   if (!value) {
     return "unknown";
@@ -158,13 +168,40 @@ function sanitizeSubreddit(value) {
   return "";
 }
 
-function buildBlockedContextText(domain, subreddit) {
+function sanitizeKeyword(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.slice(0, 64);
+}
+
+function buildBlockedContextText(domain, subreddit, keyword) {
   if (domain && domain !== "unknown" && subreddit) {
     return `Blocked subreddit: ${subreddit} on ${domain}`;
   }
 
   if (subreddit) {
     return `Blocked subreddit: ${subreddit}`;
+  }
+
+  if (domain && domain !== "unknown" && keyword) {
+    return `Blocked search keyword: "${keyword}" on ${domain}`;
+  }
+
+  if (keyword) {
+    return `Blocked search keyword: "${keyword}"`;
   }
 
   return `Blocked domain: ${domain}`;

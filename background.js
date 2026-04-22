@@ -27,6 +27,12 @@ function loadLegacyListScripts() {
   }
 
   try {
+    importScripts("bad-keywords.js");
+  } catch (error) {
+    console.error("NoPorno: failed to load bad-keywords.js", error);
+  }
+
+  try {
     importScripts("reddits.js");
   } catch (error) {
     console.error("NoPorno: failed to load reddits.js", error);
@@ -56,6 +62,7 @@ const FALLBACK_BLOCKLIST = [
 const BUILTIN_BLOCKLIST = buildDefaultBlocklistFromBadsites();
 const REDDIT_VIEWER_MATCHERS = buildRedditViewerMatchers();
 const REDDIT_BLOCKED_SUBREDDITS = buildBlockedSubredditSet();
+const BAD_SEARCH_KEYWORDS = buildBlockedKeywordList();
 
 const DEFAULT_SYNC_SETTINGS = {
   enabled: true,
@@ -160,6 +167,9 @@ async function handleMessage(message) {
 
     case "content:checkRedditUrl":
       return await evaluateRedditBlockRequest(message.url);
+
+    case "content:checkDeviantArtSearchUrl":
+      return await evaluateDeviantArtSearchBlockRequest(message.url);
 
     case "content:blockedDomainSeen":
       return {};
@@ -392,6 +402,27 @@ async function evaluateRedditBlockRequest(rawUrl) {
   return {
     shouldBlock: true,
     blockedSubreddit: `r/${blockedSubreddit}`
+  };
+}
+
+async function evaluateDeviantArtSearchBlockRequest(rawUrl) {
+  const sync = await chrome.storage.sync.get({
+    [STORAGE_SYNC_KEYS.enabled]: DEFAULT_SYNC_SETTINGS.enabled
+  });
+  const enabled = Boolean(sync[STORAGE_SYNC_KEYS.enabled]);
+
+  if (!enabled) {
+    return { shouldBlock: false };
+  }
+
+  const blockedKeyword = findBlockedKeywordInDeviantArtSearchUrl(rawUrl);
+  if (!blockedKeyword) {
+    return { shouldBlock: false };
+  }
+
+  return {
+    shouldBlock: true,
+    blockedKeyword
   };
 }
 
@@ -754,6 +785,43 @@ function buildBlockedSubredditSet() {
   return blocked;
 }
 
+function buildBlockedKeywordList() {
+  const source = Array.isArray(globalThis.badwords) ? globalThis.badwords : [];
+  const blockedKeywords = [];
+  const seen = new Set();
+
+  for (const item of source) {
+    const keyword = normalizeBlockedKeyword(item);
+    if (!keyword || seen.has(keyword)) {
+      continue;
+    }
+
+    seen.add(keyword);
+    blockedKeywords.push(keyword);
+  }
+
+  return blockedKeywords;
+}
+
+function normalizeBlockedKeyword(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized;
+}
+
 function normalizeSubredditName(value) {
   if (typeof value !== "string") {
     return "";
@@ -819,6 +887,74 @@ function findBlockedSubredditForViewerUrl(rawUrl) {
   }
 
   return findBlockedSubredditInFragment(parsed.hash);
+}
+
+function findBlockedKeywordInDeviantArtSearchUrl(rawUrl) {
+  if (typeof rawUrl !== "string" || BAD_SEARCH_KEYWORDS.length === 0) {
+    return "";
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch (_error) {
+    return "";
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return "";
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+  if (host !== "deviantart.com" && !host.endsWith(".deviantart.com")) {
+    return "";
+  }
+
+  const path = normalizeComparablePath(parsed.pathname);
+  if (!path.startsWith("/search")) {
+    return "";
+  }
+
+  const rawQuery = parsed.searchParams.get("q") || "";
+  const normalizedQuery = normalizeSearchQuery(rawQuery);
+
+  if (!normalizedQuery) {
+    return "";
+  }
+
+  const terms = new Set(normalizedQuery.split(" ").filter(Boolean));
+
+  for (const keyword of BAD_SEARCH_KEYWORDS) {
+    if (!keyword) {
+      continue;
+    }
+
+    if (keyword.includes(" ")) {
+      if (normalizedQuery.includes(keyword)) {
+        return keyword;
+      }
+      continue;
+    }
+
+    if (terms.has(keyword)) {
+      return keyword;
+    }
+  }
+
+  return "";
+}
+
+function normalizeSearchQuery(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .toLowerCase()
+    .replace(/[+/_-]+/g, " ")
+    .replace(/[^a-z0-9\s]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizeComparablePath(pathname) {

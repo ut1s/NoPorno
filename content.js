@@ -11,26 +11,37 @@
     return;
   }
 
-  void checkAndRedirectForReddit();
+  void checkAndRedirectForRestrictedContent();
 
-  async function checkAndRedirectForReddit() {
-    let response;
-    try {
-      response = await extensionApi.runtime.sendMessage({
-        type: "content:checkRedditUrl",
-        url: window.location.href
-      });
-    } catch (_error) {
+  async function checkAndRedirectForRestrictedContent() {
+    const redditResponse = await queryBlockDecision("content:checkRedditUrl");
+    if (redirectIfBlocked("reddit", redditResponse)) {
       return;
     }
 
+    const deviantArtResponse = await queryBlockDecision("content:checkDeviantArtSearchUrl");
+    redirectIfBlocked("deviantart", deviantArtResponse);
+  }
+
+  async function queryBlockDecision(type) {
+    try {
+      return await extensionApi.runtime.sendMessage({
+        type,
+        url: window.location.href
+      });
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function redirectIfBlocked(source, response) {
     if (!response?.ok || !response.shouldBlock) {
-      return;
+      return false;
     }
 
     const redirectUrl = new URL(extensionApi.runtime.getURL("redirect.html"));
     redirectUrl.searchParams.set("blocked", host);
-    redirectUrl.searchParams.set("source", "reddit");
+    redirectUrl.searchParams.set("source", source);
 
     if (
       typeof response.blockedSubreddit === "string" &&
@@ -39,6 +50,14 @@
       redirectUrl.searchParams.set("subreddit", response.blockedSubreddit.trim());
     }
 
+    if (
+      typeof response.blockedKeyword === "string" &&
+      response.blockedKeyword.trim()
+    ) {
+      redirectUrl.searchParams.set("keyword", response.blockedKeyword.trim());
+    }
+
     window.location.replace(redirectUrl.toString());
+    return true;
   }
 })();
