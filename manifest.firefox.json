@@ -30,6 +30,7 @@
         "<all_urls>"
       ],
       "js": [
+        "content-url-observer.js",
         "content.js"
       ],
       "run_at": "document_start"

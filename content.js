@@ -11,16 +11,39 @@
     return;
   }
 
+  let isCheckingRestrictedContent = false;
+
   void checkAndRedirectForRestrictedContent();
 
+  if (globalThis.NoPornoUrlObserver?.createUrlChangeObserver) {
+    globalThis.NoPornoUrlObserver.createUrlChangeObserver({
+      window,
+      history: window.history,
+      document,
+      onUrlChange: () => {
+        void checkAndRedirectForRestrictedContent();
+      }
+    });
+  }
+
   async function checkAndRedirectForRestrictedContent() {
-    const redditResponse = await queryBlockDecision("content:checkRedditUrl");
-    if (redirectIfBlocked("reddit", redditResponse)) {
+    if (isCheckingRestrictedContent) {
       return;
     }
 
-    const deviantArtResponse = await queryBlockDecision("content:checkDeviantArtSearchUrl");
-    redirectIfBlocked("deviantart", deviantArtResponse);
+    isCheckingRestrictedContent = true;
+
+    try {
+      const redditResponse = await queryBlockDecision("content:checkRedditUrl");
+      if (redirectIfBlocked("reddit", redditResponse)) {
+        return;
+      }
+
+      const deviantArtResponse = await queryBlockDecision("content:checkDeviantArtSearchUrl");
+      redirectIfBlocked("deviantart", deviantArtResponse);
+    } finally {
+      isCheckingRestrictedContent = false;
+    }
   }
 
   async function queryBlockDecision(type) {
