@@ -23,6 +23,45 @@ Especially I don't have any porn addiction or anything; maybe I had but I fought
 
 Okay this was the nice and fairytale part - I just wanted an useful project with I can make myself coller in my class; and maybe to make a little sociology research with how many block can it count.
 
+## Blocklist
+
+The bundled adult-site blocklist (~17.7k domains) ships as **static
+[declarativeNetRequest](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/declarativeNetRequest)
+rulesets** in `rules/porn_*.json`, referenced from the `declarative_net_request`
+key in both manifests. Static rulesets are matched natively by the browser, so
+the list costs almost nothing in service-worker memory and is enabled/disabled
+instantly on toggle instead of being rebuilt. The user's own custom entries stay
+as dynamic rules (so quick-add still works). This keeps us under both browsers'
+limits: 30,000 guaranteed static rules and only 5,000 dynamic rules on Firefox.
+
+Only **registrable domains** are listed — the `||domain^` filter already matches
+every subdomain, so per-blog entries would be pure bloat.
+
+### Regenerating the blocklist
+
+The list is the union of `badsites.js` (hand-curated seed) and the domains that
+appear in **all three** of these public lists (consensus filtering keeps
+false-positives and long-tail junk out):
+
+- [blocklistproject](https://github.com/blocklistproject/Lists/blob/main/adguard/porn-ags.txt) — `adguard/porn-ags.txt`
+- [StevenBlack](https://github.com/StevenBlack/hosts/blob/master/alternates/porn/hosts) — `alternates/porn/hosts`
+- [4skinSkywalker](https://github.com/4skinSkywalker/Anti-Porn-HOSTS-File/) — `HOSTS.txt`
+
+Download those three files, then:
+
+```bash
+node scripts/generate-blocklist.js <porn-ags.txt> <stevenblack-hosts> <4skin-HOSTS.txt>
+```
+
+It rewrites `rules/porn_*.json` and prints the new total. If the number of rules
+or rulesets changes, update `BUNDLED_BLOCKLIST_SIZE` / `STATIC_RULESET_IDS` in
+`background.js` and the `rule_resources` arrays in both manifests. The tests in
+`tests/blocklist-rules.test.js` guard against these falling out of sync — run:
+
+```bash
+node --test tests/*.test.js
+```
+
 ## Mozilla Add-ons upload
 
 To avoid AMO warnings for Chromium-only manifest keys (for example `background.service_worker`), build and upload the Firefox package:

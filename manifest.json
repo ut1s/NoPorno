@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NoPorno",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Calm, supportive adult-site blocker with redirection and habit-safe alternatives.",
   "incognito": "split",
   "permissions": [
@@ -13,12 +13,19 @@
   ],
   "background": {
     "scripts": [
-      "badsites.js",
       "bad-keywords.js",
       "reddits.js",
       "background.js"
     ],
     "service_worker": "background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "porn_1", "enabled": true, "path": "rules/porn_1.json" },
+      { "id": "porn_2", "enabled": true, "path": "rules/porn_2.json" },
+      { "id": "porn_3", "enabled": true, "path": "rules/porn_3.json" },
+      { "id": "porn_4", "enabled": true, "path": "rules/porn_4.json" }
+    ]
   },
   "action": {
     "default_popup": "popup.html",

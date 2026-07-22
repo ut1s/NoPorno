@@ -21,12 +21,6 @@ function loadLegacyListScripts() {
   }
 
   try {
-    importScripts("badsites.js");
-  } catch (error) {
-    console.error("NoPorno: failed to load badsites.js", error);
-  }
-
-  try {
     importScripts("bad-keywords.js");
   } catch (error) {
     console.error("NoPorno: failed to load bad-keywords.js", error);
@@ -50,16 +44,14 @@ const MAX_HISTORY_ENTRIES = 100;
 const DNR_RULE_ID_START = 1000;
 const DNR_FALLBACK_MAX_RULES = 5000;
 
-const FALLBACK_BLOCKLIST = [
-  "*://*.pornhub.com/*",
-  "*://*.xvideos.com/*",
-  "*://*.xnxx.com/*",
-  "*://*.xhamster.com/*",
-  "*://*.redtube.com/*",
-  "*://*.youporn.com/*"
-];
+// The bundled adult-site blocklist ships as static declarativeNetRequest rulesets
+// (see rules/ and scripts/generate-blocklist.js). They are matched natively by the
+// browser with near-zero JS-heap cost and toggled via updateEnabledRulesets rather
+// than rebuilt as dynamic rules. Keep these in sync with manifest rule_resources and
+// rules/index.json whenever the list is regenerated.
+const STATIC_RULESET_IDS = ["porn_1", "porn_2", "porn_3", "porn_4"];
+const BUNDLED_BLOCKLIST_SIZE = 17770;
 
-const BUILTIN_BLOCKLIST = buildDefaultBlocklistFromBadsites();
 const REDDIT_VIEWER_MATCHERS = buildRedditViewerMatchers();
 const REDDIT_BLOCKED_SUBREDDITS = buildBlockedSubredditSet();
 const BAD_SEARCH_KEYWORDS = buildBlockedKeywordList();
@@ -114,6 +106,27 @@ async function initializeExtension() {
   await ensureSyncDefaults();
   await updateBadge();
   await rebuildDynamicRules();
+}
+
+async function syncStaticRulesets(enabled) {
+  const dnr = chrome.declarativeNetRequest;
+  if (!dnr || typeof dnr.updateEnabledRulesets !== "function") {
+    return;
+  }
+
+  try {
+    if (enabled) {
+      await dnr.updateEnabledRulesets({ enableRulesetIds: STATIC_RULESET_IDS });
+    } else {
+      await dnr.updateEnabledRulesets({ disableRulesetIds: STATIC_RULESET_IDS });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await chrome.storage.local.set({
+      [STORAGE_LOCAL_KEYS.ruleLoadError]: message,
+      [STORAGE_LOCAL_KEYS.ruleLoadErrorAt]: Date.now()
+    });
+  }
 }
 
 async function ensureSyncDefaults() {
@@ -196,12 +209,11 @@ async function buildPopupState() {
 
   const stats = calculateStats(history);
   const customBlocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
-  const effectiveBlocklist = getEffectiveBlocklist(customBlocklist);
   const incognitoAccessAllowed = await getIncognitoAccessAllowed();
 
   return {
     enabled: Boolean(sync[STORAGE_SYNC_KEYS.enabled]),
-    blocklistSize: effectiveBlocklist.length,
+    blocklistSize: BUNDLED_BLOCKLIST_SIZE + customBlocklist.length,
     todayCount: stats.today,
     weekCount: stats.week,
     incognitoAccessAllowed,
@@ -362,11 +374,16 @@ async function rebuildDynamicRules() {
 
   const enabled = Boolean(sync[STORAGE_SYNC_KEYS.enabled]);
   const customBlocklist = sanitizeBlocklist(sync[STORAGE_SYNC_KEYS.blocklist]);
-  const blocklist = getEffectiveBlocklist(customBlocklist);
+
+  // The large bundled list lives in static rulesets; only the user's own
+  // custom entries become dynamic rules (keeping us well under Firefox's
+  // 5,000 dynamic-rule cap and off the JS heap for the bulk of the list).
+  await syncStaticRulesets(enabled);
+
   const dynamicRules = await chrome.declarativeNetRequest.getDynamicRules();
 
   const removeRuleIds = dynamicRules.map((rule) => rule.id);
-  const addRules = enabled ? buildDynamicRules(blocklist) : [];
+  const addRules = enabled ? buildDynamicRules(customBlocklist) : [];
 
   try {
     await chrome.declarativeNetRequest.updateDynamicRules({
@@ -578,23 +595,6 @@ function sanitizeBlocklist(blocklist) {
 
 function dedupe(list) {
   return [...new Set(list)];
-}
-
-function buildDefaultBlocklistFromBadsites() {
-  const source = Array.isArray(globalThis.badsites) ? globalThis.badsites : [];
-  const patterns = source
-    .map((entry) => normalizePattern(entry))
-    .filter((entry) => typeof entry === "string" && entry.length > 0);
-
-  if (patterns.length === 0) {
-    return [...FALLBACK_BLOCKLIST];
-  }
-
-  return dedupe(patterns);
-}
-
-function getEffectiveBlocklist(customBlocklist) {
-  return dedupe([...(Array.isArray(BUILTIN_BLOCKLIST) ? BUILTIN_BLOCKLIST : []), ...customBlocklist]);
 }
 
 function normalizePattern(input) {

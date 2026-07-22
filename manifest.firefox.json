@@ -13,10 +13,17 @@
   ],
   "background": {
     "scripts": [
-      "badsites.js",
       "bad-keywords.js",
       "reddits.js",
       "background.js"
+    ]
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "porn_1", "enabled": true, "path": "rules/porn_1.json" },
+      { "id": "porn_2", "enabled": true, "path": "rules/porn_2.json" },
+      { "id": "porn_3", "enabled": true, "path": "rules/porn_3.json" },
+      { "id": "porn_4", "enabled": true, "path": "rules/porn_4.json" }
     ]
   },
   "action": {
@@ -51,7 +58,7 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "noporno@toliver.hu",
+      "id": "noporno@oliv.dev",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [
