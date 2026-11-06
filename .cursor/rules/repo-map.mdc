@@ -1,0 +1,12 @@
+---
+description: Start here for NoPorno. Points at AGENTS.md and the files to skip.
+alwaysApply: true
+---
+
+# NoPorno
+
+Read `AGENTS.md` before exploring the repo. It maps each task to the files to open.
+
+Do not open `rules/porn_*.json`, `badsites.js`, `reddits.js`, `bsite.js`, `noporno.js`, `*.zip`, `dist/`, or `_metadata/` unless the task is blocklist generation or a lookup inside one of those lists.
+
+Blocking is declarativeNetRequest (static rulesets for the bundled list, dynamic rules for the user's domains) plus a content script for Reddit viewers and DeviantArt search. Redirect destination is `goodsites.js`. Settings fields `strictMode`, `customRedirectUrl`, and `categoryToggles` are stored and not used by `redirect.js`.
