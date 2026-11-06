@@ -73,6 +73,18 @@ If the rule count or the number of `porn_*.json` files changes, update together:
 
 Then `node --test tests/*.test.js`.
 
+## GitHub account
+
+This repo belongs to **ut1s**. The machine's usual GitHub CLI account is **T0liver**.
+
+Before `git push` or any `gh` command for this repo, switch to ut1s. After the command finishes, including when it fails, switch back to T0liver. `gh auth switch` without `--user` opens a prompt, so pass the user:
+
+```bash
+gh auth switch --user ut1s
+# git push, gh pr, gh issue, or other GitHub actions for this repo
+gh auth switch --user T0liver
+```
+
 ## Stored but not applied on redirect
 
 `strictMode`, `customRedirectUrl`, and `categoryToggles` are saved and sanitized in `background.js` and edited in settings. `redirect.js` ignores them and always uses `goodsites.js`.

@@ -9,4 +9,6 @@ Read `AGENTS.md` before exploring the repo. It maps each task to the files to op
 
 Do not open `rules/porn_*.json`, `badsites.js`, `reddits.js`, `bsite.js`, `noporno.js`, `*.zip`, `dist/`, or `_metadata/` unless the task is blocklist generation or a lookup inside one of those lists.
 
+Before `git push` or any `gh` command, run `gh auth switch --user ut1s`. When that command finishes, run `gh auth switch --user T0liver`. This repo is ut1s; the usual account on this machine is T0liver.
+
 Blocking is declarativeNetRequest (static rulesets for the bundled list, dynamic rules for the user's domains) plus a content script for Reddit viewers and DeviantArt search. Redirect destination is `goodsites.js`. Settings fields `strictMode`, `customRedirectUrl`, and `categoryToggles` are stored and not used by `redirect.js`.
