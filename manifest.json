@@ -5,6 +5,7 @@
   "description": "Calm, supportive adult-site blocker with redirection and habit-safe alternatives.",
   "incognito": "split",
   "permissions": [
+    "alarms",
     "declarativeNetRequest",
     "storage"
   ],
@@ -13,6 +14,8 @@
   ],
   "background": {
     "scripts": [
+      "pin.js",
+      "disable-delay.js",
       "bad-keywords.js",
       "reddits.js",
       "background.js"

@@ -39,15 +39,15 @@ Background entry: Chrome uses `background.service_worker` = `background.js`, whi
 
 ### Messages (`background.js` `handleMessage`)
 
-`popup:getState`, `popup:setEnabled`, `popup:quickAddDomain`, `settings:getState`, `settings:save`, `settings:clearHistory`, `redirect:log`, `content:checkRedditUrl`, `content:checkDeviantArtSearchUrl`.
+`popup:getState`, `popup:setEnabled` (on only), `popup:quickAddDomain`, `settings:getState`, `settings:save`, `settings:clearHistory`, `redirect:log`, `content:checkRedditUrl`, `content:checkDeviantArtSearchUrl`, `protection:requestDisable`, `protection:cancelDisable`.
 
 ### Storage
 
-Sync: `enabled`, `blocklist`, `categoryToggles`, `strictMode`, `customRedirectUrl`, `settingsPinHash`.
+Sync: `enabled`, `blocklist`, `categoryToggles`, `strictMode`, `customRedirectUrl`, `settingsPinHash`, `pendingDisableAt`.
 
 Local: `redirectHistory`, `ruleLoadError`, `ruleLoadErrorAt`.
 
-PIN is SHA-256 in `settings.js` and only locks the settings page.
+PIN is SHA-256 in `pin.js` and locks the settings page. Turning protection off also requires that PIN, then waits 30 seconds (`disable-delay.js`, alarm `disable-protection`) before `enabled` becomes false. `pendingDisableAt` lives in sync storage so Chromium's split incognito process can mirror the same alarm. `popup:setEnabled` and `settings:save` cannot set `enabled` to false.
 
 ## Manifest split
 

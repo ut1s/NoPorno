@@ -8,10 +8,21 @@ const STORAGE_SYNC_KEYS = {
   categoryToggles: "categoryToggles",
   strictMode: "strictMode",
   customRedirectUrl: "customRedirectUrl",
-  settingsPinHash: "settingsPinHash"
+  settingsPinHash: "settingsPinHash",
+  pendingDisableAt: "pendingDisableAt"
 };
 
+loadSupportScripts();
 loadLegacyListScripts();
+
+function loadSupportScripts() {
+  // Chrome's service worker loads these here. Firefox lists them in background.scripts.
+  if (typeof importScripts !== "function") {
+    return;
+  }
+
+  importScripts("pin.js", "disable-delay.js");
+}
 
 function loadLegacyListScripts() {
   // In service worker context we load list files via importScripts.
@@ -86,7 +97,21 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes.enabled || changes.blocklist) {
     void rebuildDynamicRules();
   }
+
+  if (changes[STORAGE_SYNC_KEYS.pendingDisableAt]) {
+    void syncDisableAlarm();
+  }
 });
+
+if (chrome.alarms && chrome.alarms.onAlarm) {
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (!alarm || alarm.name !== globalThis.DISABLE_ALARM_NAME) {
+      return;
+    }
+
+    void applyScheduledDisable();
+  });
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void handleMessage(message)
@@ -104,6 +129,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function initializeExtension() {
   await ensureSyncDefaults();
+  await syncDisableAlarm();
   await updateBadge();
   await rebuildDynamicRules();
 }
@@ -151,8 +177,21 @@ async function handleMessage(message) {
       return await buildPopupState();
 
     case "popup:setEnabled": {
-      await setEnabled(Boolean(message.enabled));
+      if (message.enabled !== true) {
+        throw new Error("Enter your PIN to turn protection off.");
+      }
+      await setEnabled(true);
       return await buildPopupState();
+    }
+
+    case "protection:requestDisable": {
+      const pendingDisableAt = await requestDisable(message.pin);
+      return { pendingDisableAt };
+    }
+
+    case "protection:cancelDisable": {
+      await clearPendingDisable();
+      return { pendingDisableAt: null };
     }
 
     case "popup:quickAddDomain": {
@@ -195,7 +234,9 @@ async function handleMessage(message) {
 async function buildPopupState() {
   const sync = await chrome.storage.sync.get([
     STORAGE_SYNC_KEYS.enabled,
-    STORAGE_SYNC_KEYS.blocklist
+    STORAGE_SYNC_KEYS.blocklist,
+    STORAGE_SYNC_KEYS.settingsPinHash,
+    STORAGE_SYNC_KEYS.pendingDisableAt
   ]);
   const local = await chrome.storage.local.get([
     STORAGE_LOCAL_KEYS.redirectHistory,
@@ -213,6 +254,10 @@ async function buildPopupState() {
 
   return {
     enabled: Boolean(sync[STORAGE_SYNC_KEYS.enabled]),
+    hasPin: Boolean(sync[STORAGE_SYNC_KEYS.settingsPinHash]),
+    pendingDisableAt: globalThis.normalizePendingDisableAt(
+      sync[STORAGE_SYNC_KEYS.pendingDisableAt]
+    ),
     blocklistSize: BUNDLED_BLOCKLIST_SIZE + customBlocklist.length,
     todayCount: stats.today,
     weekCount: stats.week,
@@ -229,7 +274,8 @@ async function buildSettingsState() {
     STORAGE_SYNC_KEYS.categoryToggles,
     STORAGE_SYNC_KEYS.strictMode,
     STORAGE_SYNC_KEYS.customRedirectUrl,
-    STORAGE_SYNC_KEYS.settingsPinHash
+    STORAGE_SYNC_KEYS.settingsPinHash,
+    STORAGE_SYNC_KEYS.pendingDisableAt
   ]);
   const local = await chrome.storage.local.get([
     STORAGE_LOCAL_KEYS.redirectHistory,
@@ -252,6 +298,9 @@ async function buildSettingsState() {
       typeof sync[STORAGE_SYNC_KEYS.settingsPinHash] === "string"
         ? sync[STORAGE_SYNC_KEYS.settingsPinHash]
         : "",
+    pendingDisableAt: globalThis.normalizePendingDisableAt(
+      sync[STORAGE_SYNC_KEYS.pendingDisableAt]
+    ),
     historyCount: history.length,
     incognitoAccessAllowed,
     ruleLoadError: local[STORAGE_LOCAL_KEYS.ruleLoadError] || "",
@@ -292,8 +341,93 @@ async function getIncognitoAccessAllowed() {
 }
 
 async function setEnabled(enabled) {
+  if (enabled) {
+    await clearPendingDisable();
+  }
+
   await chrome.storage.sync.set({ [STORAGE_SYNC_KEYS.enabled]: enabled });
   await updateBadge(enabled);
+  await rebuildDynamicRules();
+}
+
+async function requestDisable(pin) {
+  const sync = await chrome.storage.sync.get(STORAGE_SYNC_KEYS.settingsPinHash);
+  const storedHash =
+    typeof sync[STORAGE_SYNC_KEYS.settingsPinHash] === "string"
+      ? sync[STORAGE_SYNC_KEYS.settingsPinHash]
+      : "";
+
+  if (!storedHash) {
+    throw new Error("Set a PIN in settings before turning protection off.");
+  }
+
+  const hash = await globalThis.hashPin(typeof pin === "string" ? pin.trim() : "");
+  if (hash !== storedHash) {
+    throw new Error("Incorrect PIN.");
+  }
+
+  const pendingDisableAt = globalThis.pendingDisableAtFromNow(Date.now());
+  await chrome.storage.sync.set({
+    [STORAGE_SYNC_KEYS.pendingDisableAt]: pendingDisableAt
+  });
+  await syncDisableAlarm();
+  return pendingDisableAt;
+}
+
+async function readPendingDisableAt() {
+  const sync = await chrome.storage.sync.get(STORAGE_SYNC_KEYS.pendingDisableAt);
+  return globalThis.normalizePendingDisableAt(sync[STORAGE_SYNC_KEYS.pendingDisableAt]);
+}
+
+async function clearDisableAlarm() {
+  if (!chrome.alarms || typeof chrome.alarms.clear !== "function") {
+    return;
+  }
+
+  await chrome.alarms.clear(globalThis.DISABLE_ALARM_NAME);
+}
+
+async function clearPendingDisable() {
+  await chrome.storage.sync.remove(STORAGE_SYNC_KEYS.pendingDisableAt);
+  await clearDisableAlarm();
+}
+
+async function syncDisableAlarm() {
+  const pendingAt = await readPendingDisableAt();
+  if (!chrome.alarms || typeof chrome.alarms.create !== "function") {
+    return;
+  }
+
+  await clearDisableAlarm();
+
+  if (!pendingAt) {
+    return;
+  }
+
+  if (globalThis.isDisableDue(pendingAt, Date.now())) {
+    await applyScheduledDisable();
+    return;
+  }
+
+  await chrome.alarms.create(globalThis.DISABLE_ALARM_NAME, { when: pendingAt });
+}
+
+async function applyScheduledDisable() {
+  const pendingAt = await readPendingDisableAt();
+  if (!pendingAt) {
+    await clearDisableAlarm();
+    return;
+  }
+
+  if (!globalThis.isDisableDue(pendingAt, Date.now())) {
+    await syncDisableAlarm();
+    return;
+  }
+
+  await chrome.storage.sync.set({ [STORAGE_SYNC_KEYS.enabled]: false });
+  await chrome.storage.sync.remove(STORAGE_SYNC_KEYS.pendingDisableAt);
+  await clearDisableAlarm();
+  await updateBadge(false);
   await rebuildDynamicRules();
 }
 
@@ -317,8 +451,10 @@ async function quickAddDomain(input) {
 async function saveSettings(payload) {
   const updates = {};
 
-  if ("enabled" in payload) {
-    updates[STORAGE_SYNC_KEYS.enabled] = Boolean(payload.enabled);
+  let clearPending = false;
+  if (payload.enabled === true) {
+    updates[STORAGE_SYNC_KEYS.enabled] = true;
+    clearPending = true;
   }
 
   if ("blocklist" in payload) {
@@ -350,6 +486,10 @@ async function saveSettings(payload) {
 
   if (Object.keys(updates).length === 0) {
     return;
+  }
+
+  if (clearPending) {
+    await clearPendingDisable();
   }
 
   await chrome.storage.sync.set(updates);

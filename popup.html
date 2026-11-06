@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NoPorno</title>
     <link rel="stylesheet" href="popup.css" />
+    <script src="pin.js" defer></script>
+    <script src="disable-delay.js" defer></script>
     <script src="popup.js" defer></script>
   </head>
   <body>
@@ -23,6 +25,19 @@
           </label>
         </div>
         <p id="toggle-caption" class="muted">Enabled</p>
+        <div id="disable-flow" class="disable-flow" hidden>
+          <p id="disable-warning" class="warning-copy"></p>
+          <div id="disable-warning-actions" class="quick-add-row">
+            <button id="disable-continue-btn" type="button">Continue</button>
+            <button id="disable-warning-cancel-btn" class="ghost-btn" type="button">Cancel</button>
+          </div>
+          <div id="disable-pin-row" class="quick-add-row" hidden>
+            <input id="disable-pin-input" type="password" autocomplete="current-password" placeholder="PIN" />
+            <button id="disable-submit-btn" type="button">Turn off</button>
+          </div>
+          <p id="disable-countdown" class="muted" hidden></p>
+          <button id="disable-cancel-btn" class="ghost-btn" type="button" hidden>Cancel</button>
+        </div>
       </section>
 
       <section class="card">

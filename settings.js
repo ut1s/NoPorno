@@ -12,12 +12,15 @@ const state = {
   strictMode: false,
   customRedirectUrl: "",
   settingsPinHash: "",
+  pendingDisableAt: null,
   historyCount: 0,
   incognitoAccessAllowed: true,
   ruleLoadError: ""
 };
 
 let unlocked = false;
+let disableStep = "idle";
+let countdownTimer = 0;
 
 const els = {
   warningCard: document.getElementById("warning-card"),
@@ -50,7 +53,18 @@ const els = {
   newPinInput: document.getElementById("new-pin-input"),
   newPinConfirmInput: document.getElementById("new-pin-confirm-input"),
   updatePinBtn: document.getElementById("update-pin-btn"),
-  removePinBtn: document.getElementById("remove-pin-btn")
+  removePinBtn: document.getElementById("remove-pin-btn"),
+  pinDisableNote: document.getElementById("pin-disable-note"),
+  disableFlow: document.getElementById("disable-flow"),
+  disableWarning: document.getElementById("disable-warning"),
+  disableWarningActions: document.getElementById("disable-warning-actions"),
+  disableContinueBtn: document.getElementById("disable-continue-btn"),
+  disableWarningCancelBtn: document.getElementById("disable-warning-cancel-btn"),
+  disablePinRow: document.getElementById("disable-pin-row"),
+  disablePinInput: document.getElementById("disable-pin-input"),
+  disableSubmitBtn: document.getElementById("disable-submit-btn"),
+  disableCountdown: document.getElementById("disable-countdown"),
+  disableCancelBtn: document.getElementById("disable-cancel-btn")
 };
 
 init().catch((error) => {
@@ -121,6 +135,35 @@ async function init() {
     await removePin();
   });
 
+  els.pinDisableNote.textContent = globalThis.DISABLE_WARNING;
+  els.disableWarning.textContent = globalThis.DISABLE_WARNING;
+  els.enabledToggle.addEventListener("change", () => {
+    void onEnabledToggle();
+  });
+  els.disableContinueBtn.addEventListener("click", () => {
+    disableStep = "pin";
+    els.disablePinInput.value = "";
+    renderDisableFlow();
+    els.disablePinInput.focus();
+  });
+  els.disableWarningCancelBtn.addEventListener("click", () => {
+    disableStep = "idle";
+    els.disablePinInput.value = "";
+    renderDisableFlow();
+  });
+  els.disableSubmitBtn.addEventListener("click", () => {
+    void submitDisable();
+  });
+  els.disablePinInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      event.preventDefault();
+      void submitDisable();
+    }
+  });
+  els.disableCancelBtn.addEventListener("click", () => {
+    void cancelDisable();
+  });
+
   await reloadState();
 }
 
@@ -147,6 +190,7 @@ function syncStateFromResponse(response) {
   state.customRedirectUrl = typeof response.customRedirectUrl === "string" ? response.customRedirectUrl : "";
   state.settingsPinHash =
     typeof response.settingsPinHash === "string" ? response.settingsPinHash : "";
+  state.pendingDisableAt = globalThis.normalizePendingDisableAt(response.pendingDisableAt);
   state.historyCount = Number(response.historyCount || 0);
   state.incognitoAccessAllowed =
     response.incognitoAccessAllowed !== false;
@@ -184,7 +228,138 @@ function renderAll() {
 
   renderBlocklist();
   renderPinPanels();
+  renderDisableFlow();
   applyLockedState();
+}
+
+async function onEnabledToggle() {
+  if (isLocked()) {
+    els.enabledToggle.checked = state.enabled;
+    setStatus("Unlock settings with your PIN first.", true);
+    return;
+  }
+
+  if (els.enabledToggle.checked) {
+    try {
+      disableStep = "idle";
+      els.disablePinInput.value = "";
+      await sendMessage({
+        type: "popup:setEnabled",
+        enabled: true
+      });
+      await reloadState();
+      setStatus("Protection is on.");
+    } catch (error) {
+      els.enabledToggle.checked = state.enabled;
+      setStatus(error instanceof Error ? error.message : String(error), true);
+    }
+    return;
+  }
+
+  els.enabledToggle.checked = true;
+
+  if (!state.settingsPinHash) {
+    disableStep = "idle";
+    renderDisableFlow();
+    setStatus("Set a PIN before turning protection off.", true);
+    return;
+  }
+
+  disableStep = "warning";
+  els.disablePinInput.value = "";
+  renderDisableFlow();
+}
+
+function renderDisableFlow() {
+  if (!state.enabled) {
+    disableStep = "idle";
+  }
+
+  const pendingAt = state.pendingDisableAt;
+  const countingDown =
+    state.enabled &&
+    pendingAt !== null &&
+    !globalThis.isDisableDue(pendingAt, Date.now());
+
+  if (countingDown) {
+    disableStep = "countdown";
+  } else if (disableStep === "countdown") {
+    disableStep = "idle";
+  }
+
+  const showWarning = disableStep === "warning" || disableStep === "pin";
+  els.disableFlow.hidden = disableStep === "idle";
+  els.disableWarning.hidden = !showWarning && disableStep !== "countdown";
+  els.disableWarningActions.hidden = disableStep !== "warning";
+  els.disablePinRow.hidden = disableStep !== "pin";
+  els.disableCountdown.hidden = disableStep !== "countdown";
+  els.disableCancelBtn.hidden = disableStep !== "countdown";
+
+  if (disableStep === "countdown") {
+    els.disableCountdown.textContent = `Protection is still on. Turns off in ${globalThis.formatDisableCountdown(pendingAt, Date.now())}.`;
+    startCountdown();
+    return;
+  }
+
+  stopCountdown();
+}
+
+function startCountdown() {
+  if (countdownTimer) {
+    return;
+  }
+
+  countdownTimer = window.setInterval(() => {
+    const pendingAt = state.pendingDisableAt;
+    if (!pendingAt || globalThis.isDisableDue(pendingAt, Date.now())) {
+      stopCountdown();
+      reloadState().catch((error) => {
+        setStatus(error instanceof Error ? error.message : String(error), true);
+      });
+      return;
+    }
+
+    els.disableCountdown.textContent = `Protection is still on. Turns off in ${globalThis.formatDisableCountdown(pendingAt, Date.now())}.`;
+  }, 1000);
+}
+
+function stopCountdown() {
+  if (!countdownTimer) {
+    return;
+  }
+
+  window.clearInterval(countdownTimer);
+  countdownTimer = 0;
+}
+
+async function submitDisable() {
+  els.disableSubmitBtn.disabled = true;
+
+  try {
+    await sendMessage({
+      type: "protection:requestDisable",
+      pin: els.disablePinInput.value
+    });
+    els.disablePinInput.value = "";
+    disableStep = "idle";
+    await reloadState();
+    setStatus("Protection stays on for 30 seconds. You can cancel.");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : String(error), true);
+  } finally {
+    els.disableSubmitBtn.disabled = false;
+  }
+}
+
+async function cancelDisable() {
+  try {
+    await sendMessage({ type: "protection:cancelDisable" });
+    disableStep = "idle";
+    await reloadState();
+    setStatus("Protection stays on.");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : String(error), true);
+  }
 }
 
 function renderBlocklist() {
@@ -291,7 +466,6 @@ async function persistSettings(successMessage) {
   }
 
   const payload = {
-    enabled: els.enabledToggle.checked,
     blocklist: state.blocklist,
     categoryToggles: {
       mentalReset: els.catMental.checked,
@@ -408,7 +582,11 @@ async function setPin() {
     return;
   }
 
-  const hash = await hashPin(pin);
+  if (!window.confirm(globalThis.DISABLE_WARNING)) {
+    return;
+  }
+
+  const hash = await globalThis.hashPin(pin);
   const response = await sendMessage({
     type: "settings:save",
     payload: { settingsPinHash: hash }
@@ -434,7 +612,7 @@ async function unlockSettings() {
     return;
   }
 
-  const hash = await hashPin(pin);
+  const hash = await globalThis.hashPin(pin);
   if (hash !== state.settingsPinHash) {
     setStatus("Incorrect PIN.", true);
     return;
@@ -470,7 +648,11 @@ async function updatePin() {
     return;
   }
 
-  const newHash = await hashPin(newPin);
+  if (!window.confirm(globalThis.DISABLE_WARNING)) {
+    return;
+  }
+
+  const newHash = await globalThis.hashPin(newPin);
   const response = await sendMessage({
     type: "settings:save",
     payload: { settingsPinHash: newHash }
@@ -600,10 +782,3 @@ function toSafeHttpUrl(value) {
   }
 }
 
-async function hashPin(pin) {
-  const bytes = new TextEncoder().encode(pin);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
-}

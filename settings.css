@@ -208,6 +208,26 @@ input:disabled {
   color: var(--danger-strong);
 }
 
+.disable-flow {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.disable-flow[hidden] {
+  display: none;
+}
+
+.warning-copy {
+  margin: 0 0 8px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-btn);
+  padding: 8px 10px;
+  font-size: 0.92rem;
+}
+
 .warning {
   background: var(--warning-bg);
   border-color: var(--warning-border);

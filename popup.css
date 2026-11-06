@@ -83,7 +83,8 @@ body {
   margin-top: 8px;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
   width: 100%;
   border: 1px solid rgba(25, 43, 37, 0.2);
   border-radius: var(--radius-button);
@@ -93,7 +94,8 @@ input[type="text"] {
   font: inherit;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+input[type="password"]:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.2);
@@ -116,6 +118,34 @@ button:hover {
 
 .settings-btn {
   width: 100%;
+}
+
+.ghost-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(25, 43, 37, 0.2);
+}
+
+.ghost-btn:hover {
+  background: rgba(29, 158, 117, 0.12);
+}
+
+.disable-flow {
+  margin-top: 8px;
+}
+
+.disable-flow[hidden] {
+  display: none;
+}
+
+.warning-copy {
+  margin: 0;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-button);
+  padding: 8px;
+  font-size: 0.82rem;
 }
 
 .switch {
@@ -199,9 +229,14 @@ button:hover {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.33);
   }
 
-  input[type="text"] {
+  input[type="text"],
+  input[type="password"] {
     background: #1d2a26;
     border-color: rgba(179, 238, 215, 0.22);
     color: var(--text);
+  }
+
+  .ghost-btn {
+    border-color: rgba(179, 238, 215, 0.22);
   }
 }
