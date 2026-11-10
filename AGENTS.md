@@ -30,7 +30,7 @@ Read this file first. Open only the rows that match the task.
 
 ## Runtime
 
-1. **Static rules.** `rules/porn_1.json` … `porn_4.json`, indexed by `rules/index.json`. Each rule is `||domain^`, `resourceTypes: ["main_frame"]`, redirect to `/redirect.html?blocked=<domain>`. Enabled and disabled as a set with `updateEnabledRulesets`. Constant: `STATIC_RULESET_IDS`, `BUNDLED_BLOCKLIST_SIZE` (17770) in `background.js`.
+1. **Static rules.** `rules/porn_1.json` … `porn_4.json`, indexed by `rules/index.json`. Each rule is `||domain^`, `resourceTypes: ["main_frame"]`, redirect to `/redirect.html?blocked=<domain>`. Enabled and disabled as a set with `updateEnabledRulesets`. Constant: `STATIC_RULESET_IDS`, `BUNDLED_BLOCKLIST_SIZE` (17676) in `background.js`.
 2. **Dynamic rules.** User domains only, stored in `chrome.storage.sync` key `blocklist` as `*://*.domain/*`. Rule ids start at `1000`. Firefox dynamic cap is 5000; the bundled list must stay static.
 3. **Content script** on `<all_urls>` at `document_start`, top frame only. Asks the background about the current URL for Reddit viewers and DeviantArt `/search?q=`. On a hit, `location.replace`s the extension redirect page with `source`, and `subreddit` or `keyword`.
 4. **Redirect page** picks from `goodsites.js` (`var goodsites`). Logs `redirect:log`. History is local, max 100. Popup stats are today and the last 7 days.

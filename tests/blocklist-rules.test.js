@@ -2,9 +2,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { collapseHost } = require('../scripts/generate-blocklist.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const RULES_DIR = path.join(ROOT, 'rules');
+
+function ruleDomains() {
+  const domains = new Set();
+  for (const file of readRuleFiles()) {
+    const rules = JSON.parse(fs.readFileSync(path.join(RULES_DIR, file), 'utf8'));
+    for (const rule of rules) domains.add(rule.condition.urlFilter.slice(2, -1));
+  }
+  return domains;
+}
 
 function readRuleFiles() {
   return fs
@@ -95,4 +105,27 @@ test('manifests and background.js reference the same ruleset ids as the files on
       );
     }
   }
+});
+
+test('safe parent domains are absent and adult suffixes stay blocked', () => {
+  const domains = ruleDomains();
+  for (const domain of ['co.hu', 'duckdns.org', 'yahoo.com', 'blogspot.co.uk', 'gob.mx']) {
+    assert.equal(domains.has(domain), false, `${domain} should not be blocked`);
+  }
+  for (const domain of ['sex.hu', 'szex.hu', 'sex.pl', 'redtube.net.pl', 'freeporn.eu.com']) {
+    assert.equal(domains.has(domain), true, `${domain} should stay blocked`);
+  }
+});
+
+test('every bundled domain survives the safe-parent collapse', () => {
+  for (const domain of ruleDomains()) {
+    assert.equal(collapseHost(domain), domain, `${domain} should not have been kept as a rule`);
+  }
+});
+
+test('collapseHost keeps specific sites and drops safe parents', () => {
+  assert.equal(collapseHost('shop.co.hu'), 'shop.co.hu');
+  assert.equal(collapseHost('foo.duckdns.org'), null);
+  assert.equal(collapseHost('porn.yahoo.com'), null);
+  assert.equal(collapseHost('erett.sex.hu'), 'sex.hu');
 });

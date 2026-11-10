@@ -61,7 +61,7 @@ const DNR_FALLBACK_MAX_RULES = 5000;
 // than rebuilt as dynamic rules. Keep these in sync with manifest rule_resources and
 // rules/index.json whenever the list is regenerated.
 const STATIC_RULESET_IDS = ["porn_1", "porn_2", "porn_3", "porn_4"];
-const BUNDLED_BLOCKLIST_SIZE = 17770;
+const BUNDLED_BLOCKLIST_SIZE = 17676;
 
 const REDDIT_VIEWER_MATCHERS = buildRedditViewerMatchers();
 const REDDIT_BLOCKED_SUBREDDITS = buildBlockedSubredditSet();
