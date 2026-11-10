@@ -1,6 +1,6 @@
 # NoPorno agent map
 
-Manifest V3 extension (v2.3.0). Blocks adult **main-frame** navigations and sends the tab to `redirect.html`, which waits 3 seconds and opens a random URL from `goodsites.js`.
+Manifest V3 extension (v2.4.0). Blocks adult **main-frame** navigations and sends the tab to `redirect.html`, which waits 3 seconds and opens a random URL from `goodsites.js`.
 
 Read this file first. Open only the rows that match the task.
 
